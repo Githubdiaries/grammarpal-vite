@@ -30,42 +30,42 @@ import { GoogleGenAI } from "@google/genai";
 
 // --- Asset Generation ---
 
-function generateWithRetry({ model, contents, config }: { model: string; contents: { text: string; }[]; config: { imageConfig: { aspectRatio: string; }; }; }) {
-  const maxRetries = 3;
-  let attempt = 0;
+const useAssets = () => {
+  const [assets, setAssets] = useState<{
+    bg: string | null;
+    eevee: string | null;
+    snorlax: string | null;
+    ash: string | null;
+  }>({
+    bg: null,
+    eevee: null,
+    snorlax: null,
+    ash: null
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function callApi() {
-    // Example API call, replace with actual API logic
-    // This assumes a fetch to some endpoint
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ model, contents, config }),
-    });
-    if (!response.ok) {
-      throw new Error('API request failed');
-    }
-    return response.json();
-  }
-
-  async function retry() {
-    while (attempt < maxRetries) {
-      try {
-        return await callApi();
-      } catch (error) {
-        attempt++;
-        if (attempt >= maxRetries) {
-          throw error;
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promise<any> => {
+        try {
+          return await ai.models.generateContent(params);
+        } catch (err: any) {
+          const errMsg = err.message || "";
+          if (errMsg.includes("429") || err.status === 429 || errMsg.includes("RESOURCE_EXHAUSTED")) {
+            if (retries > 0) {
+              console.log(`Rate limited. Retrying in ${delay}ms... (${retries} retries left)`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return generateWithRetry(params, retries - 1, delay * 2);
+            }
+          }
+          throw err;
         }
-        await new Promise(res => setTimeout(res, 1000 * attempt)); // Exponential backoff
-      }
-    }
-  }
-
-  return retry();
-}
+      };
 
       // Sequential generation to avoid hitting concurrent request limits
       const bgRes = await generateWithRetry({
@@ -1570,40 +1570,3 @@ export default function App() {
     </div>
   );
 }
-function generateWithRetry({ model, contents, config }: { model: string; contents: { text: string; }[]; config: { imageConfig: { aspectRatio: string; }; }; }) {
-  const maxRetries = 3;
-  let attempt = 0;
-
-  async function callApi() {
-    // Example API call, replace with actual API logic
-    // This assumes a fetch to some endpoint
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ model, contents, config }),
-    });
-    if (!response.ok) {
-      throw new Error('API request failed');
-    }
-    return response.json();
-  }
-
-  async function retry() {
-    while (attempt < maxRetries) {
-      try {
-        return await callApi();
-      } catch (error) {
-        attempt++;
-        if (attempt >= maxRetries) {
-          throw error;
-        }
-        await new Promise(res => setTimeout(res, 1000 * attempt)); // Exponential backoff
-      }
-    }
-  }
-
-  return retry();
-}
-
