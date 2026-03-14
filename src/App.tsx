@@ -25,7 +25,9 @@ import {
   Star,
   Leaf,
   X,
-  Send
+  Send,
+  Mail,
+  User
 } from 'lucide-react';
 import { useStore } from './store';
 import confetti from 'canvas-confetti';
@@ -47,6 +49,13 @@ const useAssets = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const FALLBACK_ASSETS = {
+    bg: "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?q=80&w=1920&auto=format&fit=crop", // Serene Japanese landscape
+    eevee: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/133.png",
+    snorlax: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png",
+    ash: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" // Using Pikachu as Ash fallback for simplicity
+  };
 
   const generate = async () => {
     setLoading(true);
@@ -125,12 +134,16 @@ const useAssets = () => {
         ash: extract(ashRes)
       });
     } catch (err: any) {
-      console.error("Asset generation failed:", err);
+      console.error("Asset generation failed, using fallbacks:", err);
       const errMsg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      
+      // Automatically use fallbacks on quota error or any failure
+      setAssets(FALLBACK_ASSETS);
+      
       if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
-        setError("The AI generation service is currently busy or has reached its daily limit. Please wait a few minutes and try again.");
+        setError("The AI generation service has reached its limit. We've loaded our beautiful classic assets for you instead!");
       } else {
-        setError("Failed to generate assets. Please check your connection and try again.");
+        setError("We had some trouble reaching the magic generator, so we've loaded our classic assets for your journey.");
       }
     } finally {
       setLoading(false);
@@ -434,6 +447,29 @@ const AshMascot = ({ message, type = 'default', customSprite }: { message: strin
   );
 };
 
+// --- Constants & Helpers ---
+
+const WORD_BANK = { 
+  nouns: ["Teacher","River","Dragon","Forest","Robot","Castle","Planet","Library","Wizard","Village","Mountain","Friend","Garden","Ocean","Rainbow","Candy","School","Book"], 
+  nonNouns: ["Run","Jump","Quickly","Happy","Blue","Fast","Bright","Slowly","Soft","Fly","Sing","Laugh","Big","Small"] 
+};
+
+const CHARACTERS = ["Pikachu","Eevee","Togepi","Snorlax","Dragonite","Bulbasaur","Charmander","Squirtle","Jigglypuff","Meowth"];
+
+const generateSessionWords = () => {
+  const selectedNouns = [...WORD_BANK.nouns].sort(() => Math.random() - 0.5).slice(0, 4);
+  const selectedNonNouns = [...WORD_BANK.nonNouns].sort(() => Math.random() - 0.5).slice(0, 5);
+  
+  return [...selectedNouns.map(n => ({ text: n, isNoun: true })), 
+          ...selectedNonNouns.map(n => ({ text: n, isNoun: false }))]
+          .map((w, i) => ({ ...w, id: i }))
+          .sort(() => Math.random() - 0.5);
+};
+
+const getRandomCharacter = () => {
+  return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+};
+
 const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, assets: sharedAssets }: { 
   lessonId: string, 
   onComplete: () => void,
@@ -442,6 +478,8 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
   assets?: any
 }) => {
   const [step, setStep] = useState(0);
+  const [sessionWords, setSessionWords] = useState<any[]>([]); // ← UPDATED 2026
+  const [character, setCharacter] = useState(""); // ← UPDATED 2026
   const [collectedNouns, setCollectedNouns] = useState<number[]>([]);
   const [isDone, setIsDone] = useState(false);
   const [nounFeedback, setNounFeedback] = useState<{ id: number, type: 'correct' | 'wrong' } | null>(null);
@@ -456,26 +494,62 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
   
   const assets = sharedAssets || localAssets;
 
-  // AUTHENTIC TEAM DATA
-  const leaderboard = [
-    { name: "Ardra A S", xp: 980, rank: 1 },
-    { name: "Devika Chandan D", xp: 945, rank: 2 },
-    { name: "Samyukta Sanil", xp: 920, rank: 3 },
-    { name: "Aksa Susan Abraham", xp: 890, rank: 4 }
-  ];
+  // ← UPDATED 2026: Full session reset with character and word randomization
+  React.useEffect(() => {
+    setSessionWords(generateSessionWords());
+    setCharacter(getRandomCharacter());
+    setCollectedNouns([]);
+    setIsDone(false);
+  }, [lessonId]);
 
-  const practiceWords = [
-    { id: 1, text: "Pikachu", isNoun: true },
-    { id: 2, text: "Mountain", isNoun: true },
-    { id: 3, text: "Water", isNoun: true },
-    { id: 4, text: "Friend", isNoun: true },
-    { id: 5, text: "Run", isNoun: false },
-    { id: 6, text: "Happy", isNoun: false },
-    { id: 7, text: "Fast", isNoun: false },
-    { id: 8, text: "Blue", isNoun: false },
-  ];
+  // Helper: Check if two rectangles overlap by at least 30%
+  const checkOverlap = (cardRect: DOMRect, bagRect: DOMRect) => {
+    const padding = 15; // Forgiving hitbox
+    const threshold = 0.3; // 30% overlap
 
-  // Initial asset generation
+    const paddedBag = {
+      left: bagRect.left - padding,
+      right: bagRect.right + padding,
+      top: bagRect.top - padding,
+      bottom: bagRect.bottom + padding,
+    };
+
+    const xOverlap = Math.max(0, Math.min(cardRect.right, paddedBag.right) - Math.max(cardRect.left, paddedBag.left));
+    const yOverlap = Math.max(0, Math.min(cardRect.bottom, paddedBag.bottom) - Math.max(cardRect.top, paddedBag.top));
+    const overlapArea = xOverlap * yOverlap;
+    const cardArea = cardRect.width * cardRect.height;
+    
+    return overlapArea / cardArea >= threshold;
+  };
+
+  const handleNounDragEnd = (event: any, info: any, word: any) => {
+    if (!bagRef.current) return;
+    
+    const bagRect = bagRef.current.getBoundingClientRect();
+    const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+
+    const isOverBag = checkOverlap(cardRect, bagRect);
+
+    if (isOverBag) {
+      if (word.isNoun) {
+        if (!collectedNouns.includes(word.id)) {
+          const newCollected = [...collectedNouns, word.id];
+          setCollectedNouns(newCollected);
+          setNounFeedback({ id: word.id, type: 'correct' });
+          
+          if (newCollected.length >= 4) {
+            setTimeout(() => setIsDone(true), 1200);
+          }
+        }
+      } else {
+        setNounFeedback({ id: word.id, type: 'wrong' });
+      }
+    }
+    
+    setTimeout(() => setNounFeedback(null), 1000);
+  };
+
+  // Initial asset generation for prepositions
   React.useEffect(() => {
     if (lessonId === 'prepositions' && !assets.bg && !loading && !sharedAssets) {
       generate();
@@ -506,65 +580,38 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
     }
   ];
 
-  const handleNounDragEnd = (event: any, info: any, word: typeof practiceWords[0]) => {
-    if (!bagRef.current) return;
-    
-    const bagRect = bagRef.current.getBoundingClientRect();
-    const dropX = info.point.x;
-    const dropY = info.point.y;
-
-    const isOverBag = dropX > bagRect.left && dropX < bagRect.right && 
-                      dropY > bagRect.top && dropY < bagRect.bottom;
-
-    if (isOverBag) {
-      if (word.isNoun) {
-        if (!collectedNouns.includes(word.id)) {
-          const newCollected = [...collectedNouns, word.id];
-          setCollectedNouns(newCollected);
-          setNounFeedback({ id: word.id, type: 'correct' });
-          
-          // Confetti on correct
-          confetti({
-            particleCount: 40,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#FBD743', '#FFCC70', '#A7D8F0']
-          });
-
-          if (newCollected.length >= 4) {
-            setTimeout(() => setIsDone(true), 1000);
-          }
-        }
-      } else {
-        setNounFeedback({ id: word.id, type: 'wrong' });
-      }
-    }
-    
-    setTimeout(() => setNounFeedback(null), 1000);
-  };
+  const leaderboard = [
+    { name: "Ardra A S", xp: 980, rank: 1 },
+    { name: "Devika Chandan D", xp: 945, rank: 2 },
+    { name: "Samyukta Sanil", xp: 920, rank: 3 },
+    { name: "Aksa Susan Abraham", xp: 890, rank: 4 }
+  ];
 
   if (lessonId !== 'prepositions') {
     return (
       <div className="max-w-4xl w-full flex flex-col items-center relative">
         <div className="text-center mb-8">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Interactive Practice</p>
-          <h2 className="text-5xl font-serif italic mb-4">Mastering {lessonId.charAt(0).toUpperCase() + lessonId.slice(1)}</h2>
-          <p className="text-lg text-muted font-medium">Practice makes perfect! Drag the nouns into Pikachu's bag.</p>
+          <h2 className="text-5xl font-serif italic mb-4">Mastering Nouns</h2> {/* ← UPDATED 2026 */}
+          <p className="text-lg text-muted font-medium">
+            Drag the nouns into {character}'s bag. {/* ← UPDATED 2026: Dynamic character name */}
+          </p>
         </div>
         
         <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center">
-          {/* The Bag */}
+          {/* The Bag - Restored Yellow Object with Beaming Reaction & Jiggle */}
           <motion.div 
             ref={bagRef}
             animate={{ 
-              scale: nounFeedback?.type === 'correct' ? [1, 1.1, 1] : 1,
-              rotate: nounFeedback?.type === 'correct' ? [0, 5, -5, 0] : 0
+              scale: nounFeedback?.type === 'correct' ? [1, 1.15, 1] : 1, // ← UPDATED 2026: 0.3s celebratory bounce
+              rotate: nounFeedback?.type === 'correct' ? [0, 5, -5, 5, -5, 0] : 0 // ← UPDATED 2026: Jiggle animation
             }}
+            transition={{ duration: 0.3 }}
             className="relative z-10 mb-12"
           >
             <div className="relative w-56 h-56">
               <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl">
-                {/* Bag Body - Watercolor Yellow */}
+                {/* Classic Bag Body */}
                 <path 
                   d="M25,45 Q25,25 50,25 Q75,25 75,45 L80,80 Q80,95 50,95 Q20,95 20,80 Z" 
                   fill="#FBD743" 
@@ -572,60 +619,78 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
                   stroke="#C89B6D" 
                   strokeWidth="1.5"
                 />
-                {/* Lightning Tail Detail */}
-                <motion.path 
-                  d="M75,35 L88,22 L82,40 L95,28" 
-                  fill="none" 
-                  stroke="#333" 
-                  strokeWidth="3" 
-                  strokeLinecap="round"
-                  animate={{ rotate: [0, 10, 0] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-                {/* Bag Opening */}
-                <ellipse cx="50" cy="40" rx="22" ry="8" fill="#8B4513" fillOpacity="0.15" />
-                {/* Pikachu Face on Bag (Subtle) */}
-                <circle cx="42" cy="65" r="2" fill="#333" opacity="0.4" />
-                <circle cx="58" cy="65" r="2" fill="#333" opacity="0.4" />
-                <circle cx="35" cy="72" r="4" fill="#FF0000" opacity="0.2" />
-                <circle cx="65" cy="72" r="4" fill="#FF0000" opacity="0.2" />
+                
+                {/* Eyes - Wise Beaming Squinted Eyes on Correct Drop */}
+                {nounFeedback?.type === 'correct' ? (
+                  <>
+                    <path d="M38,65 Q42,62 46,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M54,65 Q58,62 62,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                    {/* Soft Pink Cheek Glow */}
+                    <circle cx="35" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
+                    <circle cx="65" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
+                  </>
+                ) : (
+                  <>
+                    <circle cx="42" cy="65" r="2" fill="#333" opacity="0.4" />
+                    <circle cx="58" cy="65" r="2" fill="#333" opacity="0.4" />
+                  </>
+                )}
+                
+                {/* Mouth - Big Wide Joyful Arc for "Happy" Reaction */}
+                {nounFeedback?.type === 'correct' ? (
+                  <path d="M42,76 Q50,84 58,76" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                ) : (
+                  <path d="M46,75 Q50,77 54,75" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
+                )}
               </svg>
               
-              {/* Collected Counter */}
-              <div className="absolute -top-4 -right-4 bg-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center border-4 border-pikachu font-bold text-ink">
+              {/* Collected Counter - Circular Progress Style */}
+              <div className="absolute -top-4 -right-4 bg-[#FFCC70] w-14 h-14 rounded-full shadow-lg flex items-center justify-center border-4 border-white font-black text-teal-900">
                 {collectedNouns.length}/4
               </div>
             </div>
             
-            {/* Pikachu Cheer */}
+            {/* Speech Bubble - Exact "Yay!" */}
             <AnimatePresence>
               {nounFeedback?.type === 'correct' && (
                 <motion.div 
-                  initial={{ opacity: 0, y: 20, scale: 0.5 }}
-                  animate={{ opacity: 1, y: -40, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute -top-20 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-full shadow-xl border border-pikachu text-sm font-bold text-ink whitespace-nowrap"
+                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: -50, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute -top-16 left-1/2 -translate-x-1/2 bg-white px-6 py-2 rounded-2xl shadow-xl border-2 border-pikachu text-lg font-black text-teal-900 z-50"
                 >
-                  Pika Pika! ✨
+                  Yay!
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
 
-          {/* Draggable Words */}
+          {/* Draggable Words - Permanent removal of collected nouns */}
           {!isDone && (
             <div className="flex flex-wrap justify-center gap-4 max-w-2xl">
-              {practiceWords.filter(w => !collectedNouns.includes(w.id)).map((word) => (
+              {sessionWords.filter(word => !collectedNouns.includes(word.id)).map((word) => (
                 <motion.div
                   key={word.id}
                   drag
                   dragSnapToOrigin
                   onDragEnd={(e, info) => handleNounDragEnd(e, info, word)}
                   whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95, zIndex: 50 }}
-                  className={`px-6 py-4 bg-white rounded-2xl shadow-md border-2 cursor-grab active:cursor-grabbing font-bold text-lg transition-colors ${
-                    nounFeedback?.id === word.id && nounFeedback.type === 'wrong' ? 'border-red-400 bg-red-50' : 'border-stone-100'
+                  whileDrag={{ 
+                    scale: 1.08, 
+                    zIndex: 50,
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
+                  }}
+                  animate={nounFeedback?.id === word.id && nounFeedback.type === 'wrong' ? {
+                    x: [0, -10, 10, -10, 10, 0],
+                    transition: { duration: 0.4 }
+                  } : {}}
+                  className={`px-6 py-4 bg-white rounded-2xl shadow-md border-2 cursor-grab active:cursor-grabbing font-bold text-lg transition-colors select-none ${
+                    nounFeedback?.id === word.id && nounFeedback.type === 'wrong' 
+                      ? 'border-red-500 bg-red-50' 
+                      : 'border-stone-100'
                   }`}
+                  style={{ touchAction: 'none' }}
                 >
                   {word.text}
                 </motion.div>
@@ -716,27 +781,20 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
     if (!containerRef.current) return "none";
     const containerRect = containerRef.current.getBoundingClientRect();
     
-    // 1. COORDINATE NORMALIZATION (Medical Accuracy)
     const scaleX = 800 / containerRect.width;
-    const scaleY = 450 / containerRect.height; // Adjusted for 16:9
+    const scaleY = 450 / containerRect.height;
     const dropX = (point.x - containerRect.left) * scaleX;
     const dropY = (point.y - containerRect.top) * scaleY;
     
-    // 2. RIGID HITBOX DEFINITIONS (Medical Accuracy - Adjusted for 16:9)
-    // TARGET ONE (IN WATER): Centers at (450, 306) with radius (220, 54)
     const isInWater = (Math.pow(dropX - 450, 2) / Math.pow(220, 2)) + 
                       (Math.pow(dropY - 306, 2) / Math.pow(54, 2)) <= 1;
     
-    // TARGET TWO (UNDER BENCH): Gap beneath seat
     const isUnderBench = dropX > 600 && dropX < 780 && dropY > 342 && dropY < 432;
-
-    // TARGET THREE (ON DECK): Surface of the deck/bench
     const isOnDeck = dropY > 288 && !isUnderBench;
 
-    // 4. PREPOSITION DETERMINATION
     let prep = "none";
     if (isUnderBench) prep = "under";
-    else if (isOnDeck && dropX > 600 && dropX < 780 && dropY < 342) prep = "on"; // Specifically on bench
+    else if (isOnDeck && dropX > 600 && dropX < 780 && dropY < 342) prep = "on";
     else if (isOnDeck) prep = "on";
     else if (isInWater) prep = "in";
     else if (dropY < 150) prep = "above"; 
@@ -776,17 +834,16 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 p-10 bg-[#1a1c1e] min-h-screen items-center justify-center w-full">
-      
-      {/* 3D SCENE CONTAINER */}
       <div className="flex flex-col items-center flex-grow max-w-5xl">
         <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-start">
           <div className="lg:col-span-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Calibration: Level {step + 1}</p>
             <h2 className="text-4xl font-serif italic mb-2 text-white">{currentLevel.instruction}</h2>
             {error && (
-              <div className="mt-2 text-xs text-rose-500 bg-rose-50 p-2 rounded-lg border border-rose-100 flex items-center gap-2">
-                <ChevronRight size={12} className="rotate-90" />
-                Generation Error: {error}. <button onClick={() => generate()} className="underline font-bold">Retry</button>
+              <div className="mt-2 text-[10px] text-amber-200 bg-white/5 p-2 rounded-lg border border-white/10 flex items-center gap-2">
+                <Sparkles size={12} className="text-amber-400" />
+                <span>AI is resting. Using classic assets.</span>
+                <button onClick={() => generate()} className="underline font-bold ml-auto hover:text-white">Retry Magic</button>
               </div>
             )}
           </div>
@@ -806,7 +863,6 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
           className="relative w-full aspect-video rounded-[50px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-[12px] border-[#2a2d30]"
           style={{ perspective: '1000px' }}
         >
-          {/* LAYER 1: FAR BACKGROUND (Mountains) */}
           <div className="absolute inset-0 z-0">
             {assets.bg ? (
               <img 
@@ -823,7 +879,6 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
             )}
           </div>
 
-          {/* HITBOX VISUAL HELPERS (DEBUG MODE - SUBTLE) */}
           {isDragging && (
             <svg viewBox="0 0 800 450" className="absolute inset-0 w-full h-full pointer-events-none opacity-20 z-10">
               <ellipse cx="450" cy="306" rx="220" ry="54" fill="cyan" />
@@ -832,7 +887,6 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
             </svg>
           )}
 
-          {/* LAYER 2: INTERACTIVE SPRITE */}
           <motion.div
             drag
             dragConstraints={containerRef}
@@ -870,10 +924,8 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
             </div>
           </motion.div>
 
-          {/* LAYER 3: FOREGROUND OVERLAY (Bench & Mist) */}
           <div className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-t from-black/20 to-transparent" />
           
-          {/* Mascot in Scene */}
           <div className="absolute right-10 top-10 scale-110 origin-top-right pointer-events-none z-40">
             <GrammaChu 
               reaction={mascotReaction} 
@@ -903,7 +955,6 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
         </div>
       </div>
 
-      {/* TEAM LEADERBOARD SIDEBAR */}
       <div className="w-full lg:w-80 bg-[#2a2d30] rounded-[40px] p-8 border border-white/5 shadow-2xl self-start lg:mt-24">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-amber-500/20 rounded-2xl">
@@ -1474,53 +1525,173 @@ const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string,
   );
 };
 
-const LoginPage = () => {
-  const [username, setUsername] = useState('');
+const LoginPage = ({ assets }: { assets: any }) => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const login = useStore((state) => state.login);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) {
-      login(username, 'Class 2');
+    const displayName = mode === 'register' ? name : email.split('@')[0];
+    if (displayName.trim()) {
+      login(displayName, 'Class 2');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-6">
+    <div className="min-h-screen w-full bg-[#fdf6e3] relative overflow-hidden flex items-center justify-center p-6">
+      {/* Onsen Background */}
+      {assets.bg ? (
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={assets.bg} 
+            alt="Background" 
+            className="w-full h-full object-cover opacity-40"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-teal-100/30 to-white/60" />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-b from-teal-100/20 to-teal-500/5 pointer-events-none" />
+      )}
+
+      {/* Floating Pikachu in Top-Right */}
+      <div className="absolute top-12 right-12 z-20 hidden md:block">
+        <motion.div
+          animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <GrammaChu reaction="happy" />
+        </motion.div>
+      </div>
+
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white p-12 rounded-[40px] shadow-xl border border-stone-100 text-center"
+        className="w-full max-w-md bg-[#FFF6E5] p-10 rounded-[48px] shadow-2xl border-[6px] border-[#D4C3A3]/30 relative z-10"
       >
-        <div className="mb-10">
-          <div className="w-24 h-24 bg-pikachu/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <GraduationCap size={48} className="text-primary" />
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-white/50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-white/40">
+            <GraduationCap size={40} className="text-teal-700" />
           </div>
-          <h1 className="text-4xl font-serif italic mb-2">GrammarPal</h1>
-          <p className="text-muted font-medium">Your journey to mastery begins here.</p>
+          <h1 className="text-4xl font-serif italic mb-2 text-teal-900">GrammarPal</h1>
+          <p className="text-stone-600 font-medium text-sm">Your magical journey to mastery begins.</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex p-1.5 bg-stone-200/50 rounded-2xl mb-8">
+          <button 
+            onClick={() => setMode('login')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+          >
+            Login
+          </button>
+          <button 
+            onClick={() => setMode('register')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+          >
+            Register
+          </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <AnimatePresence mode="wait">
+            {mode === 'register' && (
+              <motion.div
+                key="name"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-left overflow-hidden"
+              >
+                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Trainer Name</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                    placeholder="What should we call you?"
+                    required={mode === 'register'}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="text-left">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted ml-1 mb-2 block">Student Name</label>
-            <input 
-              type="text" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-primary/20 focus:bg-white transition-all outline-none font-medium text-ink"
-              placeholder="Enter your name..."
-              required
-            />
+            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Email Address</label>
+            <div className="relative">
+              <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                placeholder="trainer@pal.com"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="text-left">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Password</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                placeholder="••••••••"
+                required
+              />
+            </div>
           </div>
           
           <button 
             type="submit"
-            className="w-full bg-ink text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group btn-plushy"
+            className="w-full bg-[#FFCC70] text-teal-900 font-black py-5 rounded-2xl shadow-lg hover:bg-[#ffd68a] transition-all flex items-center justify-center gap-2 group btn-plushy mt-4"
           >
-            Start Learning
+            {mode === 'login' ? 'Continue Journey' : 'Begin Adventure'}
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-stone-300/50"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold text-stone-400">
+              <span className="bg-[#FFF6E5] px-4">Or sign in with</span>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            className="w-full bg-white border border-stone-200 text-stone-600 font-bold py-4 rounded-2xl hover:bg-stone-50 transition-all flex items-center justify-center gap-3 shadow-sm btn-plushy"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </button>
         </form>
+
+        <p className="mt-8 text-sm text-stone-500 font-medium text-center">
+          {mode === 'login' ? "New Trainer? " : "Already a Trainer? "}
+          <button 
+            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            className="text-teal-700 font-bold hover:underline"
+          >
+            {mode === 'login' ? "Register here" : "Login here"}
+          </button>
+        </p>
       </motion.div>
     </div>
   );
@@ -1742,18 +1913,18 @@ const HomeScreen = ({ assets, loading, error, onRetry, onSelectLesson }: { asset
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm"
+              className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm"
             >
-              <div className="text-rose-600 text-xs font-bold">
-                <p>Generation Limit Reached</p>
-                <p className="font-normal opacity-70">Sequential retry active...</p>
+              <div className="text-amber-800 text-xs font-bold">
+                <p>AI Magic Resting</p>
+                <p className="font-normal opacity-70">Classic assets loaded for your journey.</p>
               </div>
               <button 
                 onClick={onRetry}
                 disabled={loading}
-                className="px-4 py-2 bg-rose-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-rose-700 transition-all disabled:opacity-50"
+                className="px-4 py-2 bg-amber-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-amber-700 transition-all disabled:opacity-50"
               >
-                {loading ? "Retrying..." : "Manual Retry"}
+                {loading ? "Waking AI..." : "Try Magic Again"}
               </button>
             </motion.div>
           )}
@@ -1947,6 +2118,7 @@ export default function App() {
   const currentLesson = useStore((state) => state.currentLesson);
   const setLesson = useStore((state) => state.setLesson);
   const [view, setView] = useState<'lesson' | 'choose_action' | 'video' | 'quiz' | 'simpler_quiz' | 'practice'>('lesson');
+  const [navigationHistory, setNavigationHistory] = useState<{ view: string, lesson: string }[]>([]);
   const { assets, loading, error, generate } = useAssets();
 
   const setScore = useStore((state) => state.setScore);
@@ -1958,6 +2130,57 @@ export default function App() {
   }, [user?.isLoggedIn]);
 
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
+  // Track navigation history
+  React.useEffect(() => {
+    if (!user?.isLoggedIn) {
+      setNavigationHistory([]);
+      return;
+    }
+
+    const currentState = { view, lesson: currentLesson || '' };
+    
+    setNavigationHistory(prev => {
+      if (prev.length === 0) {
+        if (!currentLesson) return [];
+        return [currentState];
+      }
+
+      const last = prev[prev.length - 1];
+      if (last.view === currentState.view && last.lesson === currentState.lesson) {
+        return prev;
+      }
+
+      // If we are moving back (i.e., the new state is the one before the last one)
+      if (prev.length > 1) {
+        const secondLast = prev[prev.length - 2];
+        if (secondLast.view === currentState.view && secondLast.lesson === currentState.lesson) {
+          return prev.slice(0, -1);
+        }
+      }
+
+      return [...prev, currentState];
+    });
+  }, [view, currentLesson, user?.isLoggedIn]);
+
+  const handleGlobalBack = () => {
+    if (isHelpModalOpen) {
+      setIsHelpModalOpen(false);
+      return;
+    }
+
+    if (navigationHistory.length <= 1) {
+      // Go back to dashboard
+      setLesson('');
+      setView('lesson');
+      setNavigationHistory([]);
+      return;
+    }
+
+    const prev = navigationHistory[navigationHistory.length - 2];
+    setLesson(prev.lesson);
+    setView(prev.view as any);
+  };
 
   const handleBackToDashboard = () => {
     setLesson('');
@@ -1995,10 +2218,28 @@ export default function App() {
 
   return (
     <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain relative">
+      {/* Persistent Back Button */}
+      <AnimatePresence>
+        {(!!currentLesson || isHelpModalOpen) && user?.isLoggedIn && (
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            onClick={handleGlobalBack}
+            className="fixed top-12 left-10 z-[110] p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm border border-stone-200 text-[#202124] hover:scale-110 transition-all group"
+            title="Go Back"
+          >
+            <ChevronLeft size={24} />
+            {/* Subtle Glow */}
+            <div className="absolute inset-0 rounded-full bg-[#202124]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Persistent Help Button */}
       <button 
         onClick={() => setIsHelpModalOpen(true)}
-        className="fixed top-6 right-6 z-50 flex flex-col items-center gap-1 group"
+        className="fixed top-14 right-10 z-50 flex flex-col items-center gap-1 group"
       >
         <div className="p-3 bg-[#A7D8F0] text-white rounded-full shadow-lg hover:scale-110 hover:shadow-[#A7D8F0]/30 transition-all">
           <motion.div
@@ -2026,7 +2267,7 @@ export default function App() {
       <AnimatePresence mode="wait">
         {!user?.isLoggedIn ? (
           <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoginPage />
+            <LoginPage assets={assets} />
           </motion.div>
         ) : !currentLesson ? (
           <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
