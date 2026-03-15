@@ -22,7 +22,12 @@ import {
   Lock,
   Loader2,
   Crown,
-  Star
+  Star,
+  Leaf,
+  X,
+  Send,
+  Mail,
+  User
 } from 'lucide-react';
 import { useStore } from './store';
 import confetti from 'canvas-confetti';
@@ -45,29 +50,37 @@ const useAssets = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const FALLBACK_ASSETS = {
+    bg: "https://images.unsplash.com/photo-1542044896530-05d85be9b11a?q=80&w=1920&auto=format&fit=crop", // Serene Japanese landscape
+    eevee: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/133.png",
+    snorlax: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png",
+    ash: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" // Using Pikachu as Ash fallback for simplicity
+  };
+
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promise<any> => {
+      const generateWithRetry = async (params: any, retries = 5, delay = 3000): Promise<any> => {
         try {
           return await ai.models.generateContent(params);
         } catch (err: any) {
-          const errMsg = err.message || "";
-          if (errMsg.includes("429") || err.status === 429 || errMsg.includes("RESOURCE_EXHAUSTED")) {
-            if (retries > 0) {
-              console.log(`Rate limited. Retrying in ${delay}ms... (${retries} retries left)`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              return generateWithRetry(params, retries - 1, delay * 2);
-            }
+          const errMsg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+          const isRateLimited = errMsg.includes("429") || err.status === 429 || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota");
+          
+          if (isRateLimited && retries > 0) {
+            console.log(`Rate limited or quota hit. Retrying in ${delay}ms... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return generateWithRetry(params, retries - 1, delay * 2);
           }
           throw err;
         }
       };
 
       // Sequential generation to avoid hitting concurrent request limits
+      // We'll use a longer pause between assets to be safe
       const bgRes = await generateWithRetry({
         model: "gemini-2.5-flash-image",
         contents: [{
@@ -76,8 +89,7 @@ const useAssets = () => {
         config: { imageConfig: { aspectRatio: "16:9" } }
       });
 
-      // Small pause between requests
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const eeveeRes = await generateWithRetry({
         model: "gemini-2.5-flash-image",
@@ -87,7 +99,7 @@ const useAssets = () => {
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const snorlaxRes = await generateWithRetry({
         model: "gemini-2.5-flash-image",
@@ -97,7 +109,7 @@ const useAssets = () => {
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const ashRes = await generateWithRetry({
         model: "gemini-2.5-flash-image",
@@ -122,8 +134,17 @@ const useAssets = () => {
         ash: extract(ashRes)
       });
     } catch (err: any) {
-      console.error("Asset generation failed:", err);
-      setError(err.message || "Failed to generate assets. Please try again in a moment.");
+      console.error("Asset generation failed, using fallbacks:", err);
+      const errMsg = typeof err === 'string' ? err : (err.message || JSON.stringify(err));
+      
+      // Automatically use fallbacks on quota error or any failure
+      setAssets(FALLBACK_ASSETS);
+      
+      if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED") || errMsg.includes("quota")) {
+        setError("The AI generation service has reached its limit. We've loaded our beautiful classic assets for you instead!");
+      } else {
+        setError("We had some trouble reaching the magic generator, so we've loaded our classic assets for your journey.");
+      }
     } finally {
       setLoading(false);
     }
@@ -212,6 +233,18 @@ const LESSON_CONTENT: Record<string, LessonContentData> = {
       { title: "On, In, Under Song", id: "8F0NYBBK7as" },
       { title: "Where is it?", id: "j3S3S3S3S3S" }
     ]
+  },
+  adjectives: {
+    title: "Adjectives",
+    description: "The Describing Words",
+    image: "https://picsum.photos/seed/adjectives/800/450",
+    body: "Adjectives are words that describe nouns! They tell us more about people, places, and things. They can describe color, size, shape, and even how something feels or tastes.",
+    examples: ["The RED apple", "A BIG elephant", "The HAPPY boy", "A SWEET candy"],
+    videos: [
+      { title: "What is an Adjective?", id: "949W9W9W9W9" },
+      { title: "Adjective Song", id: "848W8W8W8W8" },
+      { title: "Describing Words", id: "747W7W7W7W7" }
+    ]
   }
 };
 
@@ -262,6 +295,13 @@ const QUIZ_DATA: Record<string, Question[]> = {
       options: [],
       correctAnswer: "all-matched"
     }
+  ],
+  adjectives: [
+    { id: 1, text: "Which word is an adjective?", options: ["Run", "Blue", "Table", "Quickly"], correctAnswer: "Blue" },
+    { id: 2, text: "The ____ elephant is walking.", options: ["big", "run", "slowly", "he"], correctAnswer: "big" },
+    { id: 3, text: "Adjectives describe nouns. True or False?", options: ["True", "False"], correctAnswer: "True" },
+    { id: 4, text: "Which is a color adjective?", options: ["Happy", "Green", "Tall", "Soft"], correctAnswer: "Green" },
+    { id: 5, text: "Find the adjective: 'The happy girl sang.'", options: ["The", "happy", "girl", "sang"], correctAnswer: "happy" },
   ]
 };
 
@@ -290,6 +330,11 @@ const SIMPLER_QUIZ_DATA: Record<string, Question[]> = {
     { id: 1, text: "Is 'On' about where something is?", options: ["Yes", "No"], correctAnswer: "Yes" },
     { id: 2, text: "Is 'Under' below something?", options: ["Yes", "No"], correctAnswer: "Yes" },
     { id: 3, text: "Is 'In' inside something?", options: ["Yes", "No"], correctAnswer: "Yes" },
+  ],
+  adjectives: [
+    { id: 1, text: "Is 'Red' a color word?", options: ["Yes", "No"], correctAnswer: "Yes" },
+    { id: 2, text: "Is 'Big' a size word?", options: ["Yes", "No"], correctAnswer: "Yes" },
+    { id: 3, text: "Do adjectives describe things?", options: ["Yes", "No"], correctAnswer: "Yes" },
   ]
 };
 
@@ -402,27 +447,109 @@ const AshMascot = ({ message, type = 'default', customSprite }: { message: strin
   );
 };
 
-const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { lessonId: string, onComplete: () => void, assets?: any }) => {
+// --- Constants & Helpers ---
+
+const WORD_BANK = { 
+  nouns: ["Teacher","River","Dragon","Forest","Robot","Castle","Planet","Library","Wizard","Village","Mountain","Friend","Garden","Ocean","Rainbow","Candy","School","Book"], 
+  nonNouns: ["Run","Jump","Quickly","Happy","Blue","Fast","Bright","Slowly","Soft","Fly","Sing","Laugh","Big","Small"] 
+};
+
+const CHARACTERS = ["Pikachu","Eevee","Togepi","Snorlax","Dragonite","Bulbasaur","Charmander","Squirtle","Jigglypuff","Meowth"];
+
+const generateSessionWords = () => {
+  const selectedNouns = [...WORD_BANK.nouns].sort(() => Math.random() - 0.5).slice(0, 4);
+  const selectedNonNouns = [...WORD_BANK.nonNouns].sort(() => Math.random() - 0.5).slice(0, 5);
+  
+  return [...selectedNouns.map(n => ({ text: n, isNoun: true })), 
+          ...selectedNonNouns.map(n => ({ text: n, isNoun: false }))]
+          .map((w, i) => ({ ...w, id: i }))
+          .sort(() => Math.random() - 0.5);
+};
+
+const getRandomCharacter = () => {
+  return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+};
+
+const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, assets: sharedAssets }: { 
+  lessonId: string, 
+  onComplete: () => void,
+  onWatchVideo?: () => void,
+  onHelp?: () => void,
+  assets?: any
+}) => {
   const [step, setStep] = useState(0);
+  const [sessionWords, setSessionWords] = useState<any[]>([]); // ← UPDATED 2026
+  const [character, setCharacter] = useState(""); // ← UPDATED 2026
+  const [collectedNouns, setCollectedNouns] = useState<number[]>([]);
+  const [isDone, setIsDone] = useState(false);
+  const [nounFeedback, setNounFeedback] = useState<{ id: number, type: 'correct' | 'wrong' } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState(false);
   const [currentPreposition, setCurrentPreposition] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [mascotReaction, setMascotReaction] = useState<'happy' | 'thinking' | 'sad' | 'excited' | 'confused'>('happy');
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const bagRef = React.useRef<HTMLDivElement>(null);
   const { assets: localAssets, loading, error, generate } = useAssets();
-
+  
   const assets = sharedAssets || localAssets;
 
-  // AUTHENTIC TEAM DATA
-  const leaderboard = [
-    { name: "Ardra A S", xp: 980, rank: 1 },
-    { name: "Devika Chandan D", xp: 945, rank: 2 },
-    { name: "Samyukta Sanil", xp: 920, rank: 3 },
-    { name: "Aksa Susan Abraham", xp: 890, rank: 4 }
-  ];
+  // ← UPDATED 2026: Full session reset with character and word randomization
+  React.useEffect(() => {
+    setSessionWords(generateSessionWords());
+    setCharacter(getRandomCharacter());
+    setCollectedNouns([]);
+    setIsDone(false);
+  }, [lessonId]);
 
-  // Initial asset generation
+  // Helper: Check if two rectangles overlap by at least 30%
+  const checkOverlap = (cardRect: DOMRect, bagRect: DOMRect) => {
+    const padding = 15; // Forgiving hitbox
+    const threshold = 0.3; // 30% overlap
+
+    const paddedBag = {
+      left: bagRect.left - padding,
+      right: bagRect.right + padding,
+      top: bagRect.top - padding,
+      bottom: bagRect.bottom + padding,
+    };
+
+    const xOverlap = Math.max(0, Math.min(cardRect.right, paddedBag.right) - Math.max(cardRect.left, paddedBag.left));
+    const yOverlap = Math.max(0, Math.min(cardRect.bottom, paddedBag.bottom) - Math.max(cardRect.top, paddedBag.top));
+    const overlapArea = xOverlap * yOverlap;
+    const cardArea = cardRect.width * cardRect.height;
+    
+    return overlapArea / cardArea >= threshold;
+  };
+
+  const handleNounDragEnd = (event: any, info: any, word: any) => {
+    if (!bagRef.current) return;
+    
+    const bagRect = bagRef.current.getBoundingClientRect();
+    const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+
+    const isOverBag = checkOverlap(cardRect, bagRect);
+
+    if (isOverBag) {
+      if (word.isNoun) {
+        if (!collectedNouns.includes(word.id)) {
+          const newCollected = [...collectedNouns, word.id];
+          setCollectedNouns(newCollected);
+          setNounFeedback({ id: word.id, type: 'correct' });
+          
+          if (newCollected.length >= 4) {
+            setTimeout(() => setIsDone(true), 1200);
+          }
+        }
+      } else {
+        setNounFeedback({ id: word.id, type: 'wrong' });
+      }
+    }
+    
+    setTimeout(() => setNounFeedback(null), 1000);
+  };
+
+  // Initial asset generation for prepositions
   React.useEffect(() => {
     if (lessonId === 'prepositions' && !assets.bg && !loading && !sharedAssets) {
       generate();
@@ -453,34 +580,187 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
     }
   ];
 
+  const leaderboard = [
+    { name: "Ardra A S", xp: 980, rank: 1 },
+    { name: "Devika Chandan D", xp: 945, rank: 2 },
+    { name: "Samyukta Sanil", xp: 920, rank: 3 },
+    { name: "Aksa Susan Abraham", xp: 890, rank: 4 }
+  ];
+
   if (lessonId !== 'prepositions') {
     return (
-      <div className="max-w-2xl w-full flex flex-col items-center">
-        <div className="text-center mb-12">
+      <div className="max-w-4xl w-full flex flex-col items-center relative">
+        <div className="text-center mb-8">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Interactive Practice</p>
-          <h2 className="text-4xl font-serif italic mb-4">Mastering {lessonId}</h2>
-          <p className="text-muted font-medium">Practice makes perfect! Let's do a quick review challenge.</p>
+          <h2 className="text-5xl font-serif italic mb-4">Mastering Nouns</h2> {/* ← UPDATED 2026 */}
+          <p className="text-lg text-muted font-medium">
+            Drag the nouns into {character}'s bag. {/* ← UPDATED 2026: Dynamic character name */}
+          </p>
         </div>
         
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-12 rounded-[40px] shadow-xl border border-stone-50 text-center w-full"
-        >
-          <GrammaChu reaction="happy" message="Let's do this!" />
-          <div className="my-10 p-8 bg-stone-50 rounded-3xl border-2 border-dashed border-stone-200">
-            <p className="text-lg font-medium text-ink mb-2">Mini-Challenge:</p>
-            <p className="text-muted italic">"Can you identify 3 {lessonId} in your favorite book?"</p>
-          </div>
-          
-          <button 
-            onClick={onComplete}
-            className="w-full py-5 bg-ink text-white font-bold rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-xl btn-plushy"
+        <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center">
+          {/* The Bag - Restored Yellow Object with Beaming Reaction & Jiggle */}
+          <motion.div 
+            ref={bagRef}
+            animate={{ 
+              scale: nounFeedback?.type === 'correct' ? [1, 1.15, 1] : 1, // ← UPDATED 2026: 0.3s celebratory bounce
+              rotate: nounFeedback?.type === 'correct' ? [0, 5, -5, 5, -5, 0] : 0 // ← UPDATED 2026: Jiggle animation
+            }}
+            transition={{ duration: 0.3 }}
+            className="relative z-10 mb-12"
           >
-            I'm Ready for the Quiz!
-            <ArrowRight size={20} />
-          </button>
-        </motion.div>
+            <div className="relative w-56 h-56">
+              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl">
+                {/* Classic Bag Body */}
+                <path 
+                  d="M25,45 Q25,25 50,25 Q75,25 75,45 L80,80 Q80,95 50,95 Q20,95 20,80 Z" 
+                  fill="#FBD743" 
+                  fillOpacity="0.9"
+                  stroke="#C89B6D" 
+                  strokeWidth="1.5"
+                />
+                
+                {/* Eyes - Wise Beaming Squinted Eyes on Correct Drop */}
+                {nounFeedback?.type === 'correct' ? (
+                  <>
+                    <path d="M38,65 Q42,62 46,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M54,65 Q58,62 62,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                    {/* Soft Pink Cheek Glow */}
+                    <circle cx="35" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
+                    <circle cx="65" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
+                  </>
+                ) : (
+                  <>
+                    <circle cx="42" cy="65" r="2" fill="#333" opacity="0.4" />
+                    <circle cx="58" cy="65" r="2" fill="#333" opacity="0.4" />
+                  </>
+                )}
+                
+                {/* Mouth - Big Wide Joyful Arc for "Happy" Reaction */}
+                {nounFeedback?.type === 'correct' ? (
+                  <path d="M42,76 Q50,84 58,76" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+                ) : (
+                  <path d="M46,75 Q50,77 54,75" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
+                )}
+              </svg>
+              
+              {/* Collected Counter - Circular Progress Style */}
+              <div className="absolute -top-4 -right-4 bg-[#FFCC70] w-14 h-14 rounded-full shadow-lg flex items-center justify-center border-4 border-white font-black text-teal-900">
+                {collectedNouns.length}/4
+              </div>
+            </div>
+            
+            {/* Speech Bubble - Exact "Yay!" */}
+            <AnimatePresence>
+              {nounFeedback?.type === 'correct' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                  animate={{ opacity: 1, y: -50, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="absolute -top-16 left-1/2 -translate-x-1/2 bg-white px-6 py-2 rounded-2xl shadow-xl border-2 border-pikachu text-lg font-black text-teal-900 z-50"
+                >
+                  Yay!
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Draggable Words - Permanent removal of collected nouns */}
+          {!isDone && (
+            <div className="flex flex-wrap justify-center gap-4 max-w-2xl">
+              {sessionWords.filter(word => !collectedNouns.includes(word.id)).map((word) => (
+                <motion.div
+                  key={word.id}
+                  drag
+                  dragSnapToOrigin
+                  onDragEnd={(e, info) => handleNounDragEnd(e, info, word)}
+                  whileHover={{ scale: 1.05 }}
+                  whileDrag={{ 
+                    scale: 1.08, 
+                    zIndex: 50,
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)"
+                  }}
+                  animate={nounFeedback?.id === word.id && nounFeedback.type === 'wrong' ? {
+                    x: [0, -10, 10, -10, 10, 0],
+                    transition: { duration: 0.4 }
+                  } : {}}
+                  className={`px-6 py-4 bg-white rounded-2xl shadow-md border-2 cursor-grab active:cursor-grabbing font-bold text-lg transition-colors select-none ${
+                    nounFeedback?.id === word.id && nounFeedback.type === 'wrong' 
+                      ? 'border-red-500 bg-red-50' 
+                      : 'border-stone-100'
+                  }`}
+                  style={{ touchAction: 'none' }}
+                >
+                  {word.text}
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Post-Practice Options */}
+          <AnimatePresence>
+            {isDone && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-3xl space-y-8"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <button 
+                    onClick={onWatchVideo}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-blue-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                      <Play size={28} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Watch Videos</h3>
+                    <p className="text-xs text-muted font-medium">Visual review.</p>
+                  </button>
+
+                  <div className="p-8 bg-green-50 rounded-[40px] shadow-xl border border-green-100 text-left relative overflow-hidden">
+                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                      <CheckCircle2 size={28} className="text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Practice</h3>
+                    <p className="text-xs text-green-700 font-bold">Already Done!</p>
+                    <div className="absolute -right-4 -bottom-4 opacity-10">
+                      <CheckCircle2 size={100} />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={onHelp}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-teal-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-teal-100 transition-colors">
+                      <Leaf size={28} className="text-teal-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Help</h3>
+                    <p className="text-xs text-muted font-medium">Ask Sensei.</p>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={onComplete}
+                  className="w-full py-6 bg-ink text-white font-bold rounded-3xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-2xl btn-plushy group"
+                >
+                  <span className="text-2xl">Quiz time</span>
+                  <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Faint Background Pikachu */}
+        <div className="absolute -bottom-20 -left-20 opacity-5 pointer-events-none">
+          <svg viewBox="0 0 100 100" className="w-64 h-64">
+            <circle cx="50" cy="60" r="30" fill="#FBD743" />
+            <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
+            <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
+          </svg>
+        </div>
       </div>
     );
   }
@@ -501,27 +781,20 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
     if (!containerRef.current) return "none";
     const containerRect = containerRef.current.getBoundingClientRect();
     
-    // 1. COORDINATE NORMALIZATION (Medical Accuracy)
     const scaleX = 800 / containerRect.width;
-    const scaleY = 450 / containerRect.height; // Adjusted for 16:9
+    const scaleY = 450 / containerRect.height;
     const dropX = (point.x - containerRect.left) * scaleX;
     const dropY = (point.y - containerRect.top) * scaleY;
     
-    // 2. RIGID HITBOX DEFINITIONS (Medical Accuracy - Adjusted for 16:9)
-    // TARGET ONE (IN WATER): Centers at (450, 306) with radius (220, 54)
     const isInWater = (Math.pow(dropX - 450, 2) / Math.pow(220, 2)) + 
                       (Math.pow(dropY - 306, 2) / Math.pow(54, 2)) <= 1;
     
-    // TARGET TWO (UNDER BENCH): Gap beneath seat
     const isUnderBench = dropX > 600 && dropX < 780 && dropY > 342 && dropY < 432;
-
-    // TARGET THREE (ON DECK): Surface of the deck/bench
     const isOnDeck = dropY > 288 && !isUnderBench;
 
-    // 4. PREPOSITION DETERMINATION
     let prep = "none";
     if (isUnderBench) prep = "under";
-    else if (isOnDeck && dropX > 600 && dropX < 780 && dropY < 342) prep = "on"; // Specifically on bench
+    else if (isOnDeck && dropX > 600 && dropX < 780 && dropY < 342) prep = "on";
     else if (isOnDeck) prep = "on";
     else if (isInWater) prep = "in";
     else if (dropY < 150) prep = "above"; 
@@ -561,17 +834,16 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 p-10 bg-[#1a1c1e] min-h-screen items-center justify-center w-full">
-      
-      {/* 3D SCENE CONTAINER */}
       <div className="flex flex-col items-center flex-grow max-w-5xl">
         <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-start">
           <div className="lg:col-span-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Calibration: Level {step + 1}</p>
             <h2 className="text-4xl font-serif italic mb-2 text-white">{currentLevel.instruction}</h2>
             {error && (
-              <div className="mt-2 text-xs text-rose-500 bg-rose-50 p-2 rounded-lg border border-rose-100 flex items-center gap-2">
-                <ChevronRight size={12} className="rotate-90" />
-                Generation Error: {error}. <button onClick={() => generate()} className="underline font-bold">Retry</button>
+              <div className="mt-2 text-[10px] text-amber-200 bg-white/5 p-2 rounded-lg border border-white/10 flex items-center gap-2">
+                <Sparkles size={12} className="text-amber-400" />
+                <span>AI is resting. Using classic assets.</span>
+                <button onClick={() => generate()} className="underline font-bold ml-auto hover:text-white">Retry Magic</button>
               </div>
             )}
           </div>
@@ -591,7 +863,6 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
           className="relative w-full aspect-video rounded-[50px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-[12px] border-[#2a2d30]"
           style={{ perspective: '1000px' }}
         >
-          {/* LAYER 1: FAR BACKGROUND (Mountains) */}
           <div className="absolute inset-0 z-0">
             {assets.bg ? (
               <img 
@@ -608,7 +879,6 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
             )}
           </div>
 
-          {/* HITBOX VISUAL HELPERS (DEBUG MODE - SUBTLE) */}
           {isDragging && (
             <svg viewBox="0 0 800 450" className="absolute inset-0 w-full h-full pointer-events-none opacity-20 z-10">
               <ellipse cx="450" cy="306" rx="220" ry="54" fill="cyan" />
@@ -617,7 +887,6 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
             </svg>
           )}
 
-          {/* LAYER 2: INTERACTIVE SPRITE */}
           <motion.div
             drag
             dragConstraints={containerRef}
@@ -655,10 +924,8 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
             </div>
           </motion.div>
 
-          {/* LAYER 3: FOREGROUND OVERLAY (Bench & Mist) */}
           <div className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-t from-black/20 to-transparent" />
           
-          {/* Mascot in Scene */}
           <div className="absolute right-10 top-10 scale-110 origin-top-right pointer-events-none z-40">
             <GrammaChu 
               reaction={mascotReaction} 
@@ -688,7 +955,6 @@ const InteractivePractice = ({ lessonId, onComplete, assets: sharedAssets }: { l
         </div>
       </div>
 
-      {/* TEAM LEADERBOARD SIDEBAR */}
       <div className="w-full lg:w-80 bg-[#2a2d30] rounded-[40px] p-8 border border-white/5 shadow-2xl self-start lg:mt-24">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-amber-500/20 rounded-2xl">
@@ -1002,33 +1268,43 @@ const VideoPage = ({ lessonId, onDone }: { lessonId: string, onDone: () => void 
   );
 };
 
-const ChooseActionPage = ({ lessonId, onWatchVideo, onStartQuiz, onStartPractice }: { lessonId: string, onWatchVideo: () => void, onStartQuiz: () => void, onStartPractice: () => void }) => {
+const ChooseActionPage = ({ lessonId, onWatchVideo, onStartQuiz, onStartPractice, onBack }: { lessonId: string, onWatchVideo: () => void, onStartQuiz: () => void, onStartPractice: () => void, onBack: () => void }) => {
   return (
-    <div className="max-w-4xl w-full text-center">
+    <div className="max-w-4xl w-full text-center relative">
+      <button 
+        onClick={onBack}
+        className="absolute top-0 left-0 -translate-y-12 p-3 text-[#202124] hover:bg-stone-200/50 rounded-full transition-all group"
+      >
+        <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" />
+      </button>
+
       <GrammaChu reaction="surprised" message="What's next?" />
       <h1 className="text-5xl font-serif italic mb-6">Choose Your Path</h1>
       <p className="text-lg text-muted font-medium mb-12">Are you ready to test your skills, or would you like to practice first?</p>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <button 
-          onClick={onWatchVideo}
-          className="p-10 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-primary/20 transition-all group text-left btn-plushy"
-        >
-          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
-            <Play size={32} className="text-primary" />
-          </div>
-          <h3 className="text-2xl font-serif italic mb-2">Watch Videos</h3>
-          <p className="text-sm text-muted font-medium">See visual explanations.</p>
-        </button>
-
-        <button 
           onClick={onStartPractice}
           className="p-10 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-orange-200 transition-all group text-left btn-plushy"
         >
           <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors">
-            <Sparkles size={32} className="text-orange-500" />
+            <div className="relative">
+              <svg viewBox="0 0 100 100" className="w-12 h-12">
+                {/* Pikachu Head */}
+                <circle cx="50" cy="60" r="30" fill="#FBD743" />
+                <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
+                <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
+                {/* Knot/Towel */}
+                <rect x="35" y="32" width="30" height="10" rx="5" fill="white" stroke="#E5E7EB" strokeWidth="1" />
+                {/* Eyes & Cheeks */}
+                <circle cx="40" cy="58" r="3" fill="#333" />
+                <circle cx="60" cy="58" r="3" fill="#333" />
+                <circle cx="30" cy="68" r="5" fill="#FF0000" opacity="0.6" />
+                <circle cx="70" cy="68" r="5" fill="#FF0000" opacity="0.6" />
+              </svg>
+            </div>
           </div>
-          <h3 className="text-2xl font-serif italic mb-2">Interactive Practice</h3>
+          <h3 className="text-2xl font-serif italic mb-2">Let's Practice</h3>
           <p className="text-sm text-muted font-medium">
             {lessonId === 'prepositions' ? 'Drag and drop simulation!' : 'Mini-challenge review!'}
           </p>
@@ -1039,17 +1315,34 @@ const ChooseActionPage = ({ lessonId, onWatchVideo, onStartQuiz, onStartPractice
           className="p-10 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-green/20 transition-all group text-left btn-plushy"
         >
           <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-green-100 transition-colors">
-            <Trophy size={32} className="text-green-600" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8 text-green-700">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
+              <line x1="6" y1="1" x2="6" y2="4" className="opacity-40" />
+              <line x1="10" y1="1" x2="10" y2="4" className="opacity-40" />
+              <line x1="14" y1="1" x2="14" y2="4" className="opacity-40" />
+            </svg>
           </div>
-          <h3 className="text-2xl font-serif italic mb-2">Final Quiz</h3>
+          <h3 className="text-2xl font-serif italic mb-2">Quiz Time</h3>
           <p className="text-sm text-muted font-medium">Jump straight into the test!</p>
+        </button>
+
+        <button 
+          onClick={onWatchVideo}
+          className="p-10 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-primary/20 transition-all group text-left btn-plushy"
+        >
+          <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+            <Play size={32} className="text-primary" />
+          </div>
+          <h3 className="text-2xl font-serif italic mb-2">Watch Videos</h3>
+          <p className="text-sm text-muted font-medium">See visual explanations.</p>
         </button>
       </div>
     </div>
   );
 };
 
-const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onContinue: () => void }) => {
+const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string, onContinue: () => void, onBack: () => void }) => {
   const content = LESSON_CONTENT[lessonId];
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [step, setStep] = useState(0);
@@ -1076,8 +1369,23 @@ const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onConti
     window.speechSynthesis.speak(utterance);
   };
 
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    } else {
+      onBack();
+    }
+  };
+
   return (
-    <div className="max-w-5xl w-full">
+    <div className="max-w-5xl w-full relative">
+      <button 
+        onClick={handleBack}
+        className="absolute top-0 left-0 -translate-y-12 p-3 text-[#202124] hover:bg-stone-200/50 rounded-full transition-all group z-30"
+      >
+        <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" />
+      </button>
+
       <div className="mb-12 flex justify-end">
         <AshMascot message={steps[step].ash} type={step === 1 ? 'tip' : 'default'} />
       </div>
@@ -1131,14 +1439,24 @@ const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onConti
               )}
 
               {step === 2 && (
-                <div className="text-center py-8">
+                <div className="text-center py-4">
                   <p className="text-xl text-muted font-medium mb-8">
                     You've completed the lesson! Are you ready to earn your badge?
                   </p>
                   <div className="flex justify-center gap-4">
-                    <div className="w-16 h-16 bg-pikachu/20 rounded-full flex items-center justify-center">
-                      <Award size={32} className="text-pikachu" />
-                    </div>
+                    <motion.div 
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                      className="w-20 h-20 bg-pikachu/20 rounded-full flex items-center justify-center relative"
+                    >
+                      <Award size={40} className="text-pikachu" />
+                      {/* Subtle water ripple */}
+                      <motion.div 
+                        animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute inset-0 border-2 border-pikachu/30 rounded-full"
+                      />
+                    </motion.div>
                   </div>
                 </div>
               )}
@@ -1168,8 +1486,8 @@ const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onConti
                 className="flex-[2] bg-primary text-white font-bold py-6 rounded-2xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 shadow-lg shadow-primary/20 btn-plushy"
               >
                 {step < steps.length - 1 
-                  ? "Next Step" 
-                  : lessonId === 'prepositions' ? "Continue to Practice" : "Continue to Quiz"}
+                  ? "Next" 
+                  : "Lesgooooooo"}
                 <ArrowRight size={20} />
               </button>
             </div>
@@ -1177,25 +1495,27 @@ const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onConti
         </div>
 
         <div className="lg:col-span-4 space-y-8">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="rounded-[40px] overflow-hidden shadow-2xl border-8 border-white"
-          >
-            <img 
-              src={content.image} 
-              alt={content.title} 
-              className="w-full h-auto object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </motion.div>
+          {step < 2 && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-[40px] overflow-hidden shadow-2xl border-8 border-white max-w-[280px] mx-auto"
+            >
+              <img 
+                src={content.image} 
+                alt={content.title} 
+                className="w-full h-auto object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </motion.div>
+          )}
 
-          <div className="bg-pikachu/10 p-8 rounded-[40px] border border-pikachu/20">
+          <div className="bg-pikachu/10 p-6 rounded-[40px] border border-pikachu/20 max-w-[280px] mx-auto">
             <GrammaChu 
               reaction={isSpeaking ? 'surprised' : steps[step].reaction} 
               message={isSpeaking ? "Listening carefully..." : undefined} 
             />
-            <p className="text-sm text-stone-700 font-bold italic text-center leading-relaxed mt-4">
+            <p className="text-xs text-stone-700 font-bold italic text-center leading-relaxed mt-4">
               "Did you know? {content.title} are like the {step === 0 ? 'foundation' : step === 1 ? 'moves' : 'victory'} of every sentence!"
             </p>
           </div>
@@ -1205,53 +1525,173 @@ const LessonContentPage = ({ lessonId, onContinue }: { lessonId: string, onConti
   );
 };
 
-const LoginPage = () => {
-  const [username, setUsername] = useState('');
+const LoginPage = ({ assets }: { assets: any }) => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const login = useStore((state) => state.login);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) {
-      login(username, 'Class 2');
+    const displayName = mode === 'register' ? name : email.split('@')[0];
+    if (displayName.trim()) {
+      login(displayName, 'Class 2');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-6">
+    <div className="min-h-screen w-full bg-[#fdf6e3] relative overflow-hidden flex items-center justify-center p-6">
+      {/* Onsen Background */}
+      {assets.bg ? (
+        <div className="absolute inset-0 z-0">
+          <img 
+            src={assets.bg} 
+            alt="Background" 
+            className="w-full h-full object-cover opacity-40"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-teal-100/30 to-white/60" />
+        </div>
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-b from-teal-100/20 to-teal-500/5 pointer-events-none" />
+      )}
+
+      {/* Floating Pikachu in Top-Right */}
+      <div className="absolute top-12 right-12 z-20 hidden md:block">
+        <motion.div
+          animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <GrammaChu reaction="happy" />
+        </motion.div>
+      </div>
+
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-white p-12 rounded-[40px] shadow-xl border border-stone-100 text-center"
+        className="w-full max-w-md bg-[#FFF6E5] p-10 rounded-[48px] shadow-2xl border-[6px] border-[#D4C3A3]/30 relative z-10"
       >
-        <div className="mb-10">
-          <div className="w-24 h-24 bg-pikachu/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <GraduationCap size={48} className="text-primary" />
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-white/50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-white/40">
+            <GraduationCap size={40} className="text-teal-700" />
           </div>
-          <h1 className="text-4xl font-serif italic mb-2">GrammarPal</h1>
-          <p className="text-muted font-medium">Your journey to mastery begins here.</p>
+          <h1 className="text-4xl font-serif italic mb-2 text-teal-900">GrammarPal</h1>
+          <p className="text-stone-600 font-medium text-sm">Your magical journey to mastery begins.</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex p-1.5 bg-stone-200/50 rounded-2xl mb-8">
+          <button 
+            onClick={() => setMode('login')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+          >
+            Login
+          </button>
+          <button 
+            onClick={() => setMode('register')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
+          >
+            Register
+          </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <AnimatePresence mode="wait">
+            {mode === 'register' && (
+              <motion.div
+                key="name"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-left overflow-hidden"
+              >
+                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Trainer Name</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                    placeholder="What should we call you?"
+                    required={mode === 'register'}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="text-left">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-muted ml-1 mb-2 block">Student Name</label>
-            <input 
-              type="text" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-primary/20 focus:bg-white transition-all outline-none font-medium text-ink"
-              placeholder="Enter your name..."
-              required
-            />
+            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Email Address</label>
+            <div className="relative">
+              <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                placeholder="trainer@pal.com"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="text-left">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Password</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
+                placeholder="••••••••"
+                required
+              />
+            </div>
           </div>
           
           <button 
             type="submit"
-            className="w-full bg-ink text-white font-bold py-5 rounded-2xl shadow-lg hover:bg-stone-800 transition-all flex items-center justify-center gap-2 group btn-plushy"
+            className="w-full bg-[#FFCC70] text-teal-900 font-black py-5 rounded-2xl shadow-lg hover:bg-[#ffd68a] transition-all flex items-center justify-center gap-2 group btn-plushy mt-4"
           >
-            Start Learning
+            {mode === 'login' ? 'Continue Journey' : 'Begin Adventure'}
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
           </button>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-stone-300/50"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold text-stone-400">
+              <span className="bg-[#FFF6E5] px-4">Or sign in with</span>
+            </div>
+          </div>
+
+          <button 
+            type="button"
+            className="w-full bg-white border border-stone-200 text-stone-600 font-bold py-4 rounded-2xl hover:bg-stone-50 transition-all flex items-center justify-center gap-3 shadow-sm btn-plushy"
+          >
+            <svg viewBox="0 0 24 24" className="w-5 h-5">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </button>
         </form>
+
+        <p className="mt-8 text-sm text-stone-500 font-medium text-center">
+          {mode === 'login' ? "New Trainer? " : "Already a Trainer? "}
+          <button 
+            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+            className="text-teal-700 font-bold hover:underline"
+          >
+            {mode === 'login' ? "Register here" : "Login here"}
+          </button>
+        </p>
       </motion.div>
     </div>
   );
@@ -1294,16 +1734,149 @@ const Navbar = ({ user, onLogout, onBack, showBack }: { user: any, onLogout: () 
   );
 };
 
-const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading: boolean, error: string | null, onRetry: () => void }) => {
+const HomeScreen = ({ assets, loading, error, onRetry, onSelectLesson }: { assets: any, loading: boolean, error: string | null, onRetry: () => void, onSelectLesson: (id: string) => void }) => {
   const user = useStore((state) => state.user);
   const setLesson = useStore((state) => state.setLesson);
 
   const lessons = [
-    { id: 'nouns', title: 'Nouns', color: '#60a5fa', icon: <Sparkles className="text-white" size={20} /> },
-    { id: 'verbs', title: 'Verbs', color: '#4ade80', icon: <Play className="text-white" size={20} /> },
-    { id: 'tenses', title: 'Tenses', color: '#c084fc', icon: <ChevronRight className="text-white" size={20} /> },
-    { id: 'articles', title: 'Articles', color: '#facc15', icon: <Trophy className="text-white" size={20} /> },
-    { id: 'prepositions', title: 'Prepositions', color: '#fb923c', icon: <ArrowRight className="text-white" size={20} /> },
+    { 
+      id: 'nouns', 
+      title: 'Nouns', 
+      color: '#A7D8F0', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <path d="M12 6v10" className="opacity-40" />
+          <motion.path 
+            d="M15 4l2-1M18 7l1-1M16 10l2-1" 
+            animate={{ y: [-2, 2, -2], x: [-1, 1, -1], opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 3, repeat: Infinity }}
+            stroke="#FFCC70"
+          />
+        </svg>
+      )
+    },
+    { 
+      id: 'verbs', 
+      title: 'Verbs', 
+      color: '#8ED081', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <path d="M17.7 7.7A7.1 7.1 0 1 1 5 8c0 .3 0 .6.1.9" />
+          <path d="M12 12l3 3" />
+          <motion.path 
+            d="M2 12h4M2 8h2M2 16h2" 
+            animate={{ x: [0, 3, 0], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+          <motion.path 
+            d="M11 19c0 1.7-1.3 3-3 3s-3-1.3-3-3 1.3-3 3-3 3 1.3 3 3z" 
+            fill="#8ED081" 
+            fillOpacity="0.2"
+            animate={{ rotate: [0, 15, 0], scale: [1, 1.1, 1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+        </svg>
+      )
+    },
+    { 
+      id: 'tenses', 
+      title: 'Tenses', 
+      color: '#FFCC70', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+          <motion.circle 
+            cx="12" cy="12" r="12" 
+            stroke="#FFCC70" 
+            strokeDasharray="4 4"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="opacity-30"
+          />
+          <motion.path 
+            d="M12 2v2M12 20v2M2 12h2M20 12h2" 
+            animate={{ opacity: [0.2, 0.5, 0.2] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+        </svg>
+      )
+    },
+    { 
+      id: 'articles', 
+      title: 'Articles', 
+      color: '#F9A8D4', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <motion.text 
+            x="2" y="14" fontSize="8" fontWeight="bold" fill="currentColor"
+            animate={{ y: [14, 12, 14], opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >A</motion.text>
+          <motion.text 
+            x="8" y="18" fontSize="6" fontWeight="bold" fill="currentColor"
+            animate={{ y: [18, 16, 18], opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 4, repeat: Infinity, delay: 0.5 }}
+          >An</motion.text>
+          <motion.text 
+            x="14" y="12" fontSize="7" fontWeight="bold" fill="currentColor"
+            animate={{ y: [12, 10, 12], opacity: [0.5, 0.9, 0.5] }}
+            transition={{ duration: 3.5, repeat: Infinity, delay: 1 }}
+          >The</motion.text>
+          <circle cx="12" cy="12" r="10" className="opacity-10" fill="currentColor" />
+        </svg>
+      )
+    },
+    { 
+      id: 'prepositions', 
+      title: 'Prepositions', 
+      color: '#C084FC', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <rect x="8" y="12" width="8" height="8" rx="1" className="opacity-20" fill="currentColor" />
+          <motion.path 
+            d="M12 4v8m0 0l-3-3m3 3l3-3" 
+            animate={{ y: [-2, 2, -2] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.circle 
+            cx="12" cy="16" r="2" 
+            fill="currentColor"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+        </svg>
+      )
+    },
+    { 
+      id: 'adjectives', 
+      title: 'Adjectives', 
+      color: '#FDBA74', 
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+          <motion.path 
+            d="M12 2C12 2 19 7 19 12C19 17 12 22 12 22C12 22 5 17 5 12C5 7 12 2 12 2Z" 
+            fill="currentColor" 
+            fillOpacity="0.1"
+            animate={{ rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 6, repeat: Infinity }}
+          />
+          <motion.path 
+            d="M12 8v8M8 12h8" 
+            stroke="#FFCC70"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+          <motion.path 
+            d="M12 2L12 22" 
+            stroke="currentColor" 
+            strokeOpacity="0.1"
+          />
+        </svg>
+      )
+    },
   ];
 
   return (
@@ -1323,9 +1896,6 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
         <div className="absolute inset-0 bg-gradient-to-b from-teal-100/30 to-teal-500/10 pointer-events-none" />
       )}
       
-      {/* Wooden Deck (Bottom) */}
-      <div className="absolute bottom-0 w-full h-1/4 bg-[#8b5e3c] border-t-8 border-[#5d3a1a] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] z-10" />
-      
       <div className="relative z-20 max-w-7xl mx-auto px-8 py-12 w-full flex-grow flex flex-col">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
           <motion.div
@@ -1334,7 +1904,7 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
           >
             <h2 className="text-5xl font-serif italic mb-2 leading-tight">
               Welcome back, <br />
-              <span className="text-teal-800 not-italic font-sans font-extrabold tracking-tighter">Trainer {user?.username}</span>
+              <span className="text-teal-800 not-italic font-sans font-extrabold tracking-tighter">Scholar {user?.username}</span>
             </h2>
             <p className="text-stone-600 font-medium">Your journey to linguistic mastery continues.</p>
           </motion.div>
@@ -1343,18 +1913,18 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm"
+              className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm"
             >
-              <div className="text-rose-600 text-xs font-bold">
-                <p>Generation Limit Reached</p>
-                <p className="font-normal opacity-70">Sequential retry active...</p>
+              <div className="text-amber-800 text-xs font-bold">
+                <p>AI Magic Resting</p>
+                <p className="font-normal opacity-70">Classic assets loaded for your journey.</p>
               </div>
               <button 
                 onClick={onRetry}
                 disabled={loading}
-                className="px-4 py-2 bg-rose-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-rose-700 transition-all disabled:opacity-50"
+                className="px-4 py-2 bg-amber-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-amber-700 transition-all disabled:opacity-50"
               >
-                {loading ? "Retrying..." : "Manual Retry"}
+                {loading ? "Waking AI..." : "Try Magic Again"}
               </button>
             </motion.div>
           )}
@@ -1372,7 +1942,7 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
             <div className="relative z-10">
               <GrammaChu 
                 reaction={loading ? 'thinking' : error ? 'confused' : 'happy'} 
-                message={loading ? "Generating your world..." : error ? "Oops! The spirits are tired. Retry?" : "The water is perfect! Click a badge below to start your training battle!"} 
+                message={loading ? "Generating your world..." : error ? "Oops! The spirits are tired. Retry?" : "The water is perfect! Click a badge below to start your learning journey!"} 
               />
               {/* Towel on head */}
               <motion.div 
@@ -1385,7 +1955,7 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
         </div>
 
         {/* Badge Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-10 justify-items-center mt-auto pb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12 max-w-5xl mx-auto mt-12 pb-24">
           {lessons.map((lesson, idx) => {
             return (
               <motion.div
@@ -1396,45 +1966,62 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
                 className="flex flex-col items-center"
               >
                 <button
-                  onClick={() => setLesson(lesson.id)}
-                  className={`relative group transition-all duration-500 hover:scale-110 cursor-pointer`}
+                  onClick={() => onSelectLesson(lesson.id)}
+                  className="relative group cursor-pointer"
                 >
-                  {/* Hexagonal Badge SVG */}
-                  <div className="relative w-28 h-32">
-                    <svg viewBox="0 0 100 115" className={`w-full h-full drop-shadow-xl transition-colors duration-500`}>
-                      <path 
-                        d="M50 5 L95 30 L95 85 L50 110 L5 85 L5 30 Z" 
-                        fill={lesson.color}
-                      />
-                      <path 
-                        d="M50 10 L90 33 L90 82 L50 105 L10 82 L10 33 Z" 
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeOpacity="0.2"
-                      />
-                    </svg>
+                  {/* Ghibli Style Card */}
+                  <motion.div 
+                    whileHover={{ y: -8, scale: 1.02 }}
+                    className="relative w-40 h-52 bg-[#FFF6E5] rounded-[2rem] shadow-[0_10px_30px_-10px_rgba(200,155,109,0.3)] border-b-4 border-[#C89B6D]/30 overflow-hidden flex flex-col items-center justify-center p-6 transition-all duration-500"
+                  >
+                    {/* Subtle Wood Texture Overlay */}
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/wood-pattern.png')]" />
                     
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                      <motion.div 
-                        initial={{ scale: 0.8 }}
-                        animate={{ scale: 1 }}
-                        className="flex flex-col items-center"
-                      >
-                        <div className="mb-1 drop-shadow-md">{lesson.icon}</div>
-                        <span className="text-white font-black text-[10px] uppercase tracking-tighter drop-shadow-sm">{lesson.title}</span>
-                        {lesson.id === 'prepositions' && (
-                          <motion.div 
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="mt-1 px-2 py-0.5 bg-white text-orange-600 text-[8px] font-black rounded-full shadow-sm"
-                          >
-                            BATTLE
-                          </motion.div>
-                        )}
-                      </motion.div>
+                    {/* Soft Glow Background */}
+                    <div 
+                      className="absolute inset-0 opacity-10 transition-opacity duration-500 group-hover:opacity-20"
+                      style={{ background: `radial-gradient(circle at center, ${lesson.color}, transparent)` }}
+                    />
+
+                    {/* Ripple Effect on Hover */}
+                    <motion.div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-10 pointer-events-none"
+                      animate={{ 
+                        scale: [1, 1.2, 1],
+                        opacity: [0, 0.1, 0]
+                      }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                      style={{ border: `2px solid ${lesson.color}`, borderRadius: '2rem' }}
+                    />
+
+                    {/* Icon Container */}
+                    <div 
+                      className="relative z-10 mb-6 p-4 rounded-full transition-transform duration-500 group-hover:scale-110"
+                      style={{ color: '#202124', backgroundColor: `${lesson.color}20` }}
+                    >
+                      {lesson.icon}
                     </div>
-                  </div>
+
+                    {/* Title */}
+                    <span className="relative z-10 text-[#202124] font-serif text-xl italic tracking-tight opacity-90">
+                      {lesson.title}
+                    </span>
+
+                    {/* Floating Petal Overlay (Subtle) */}
+                    <motion.div 
+                      className="absolute top-2 right-2 w-4 h-4 opacity-20"
+                      animate={{ 
+                        y: [0, 10, 0], 
+                        x: [0, -5, 0], 
+                        rotate: [0, 45, 0] 
+                      }}
+                      transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="#FFCC70">
+                        <path d="M12,2C12,2 15,6 15,10C15,14 12,18 12,18C12,18 9,14 9,10C9,6 12,2 12,2Z" />
+                      </svg>
+                    </motion.div>
+                  </motion.div>
                 </button>
               </motion.div>
             );
@@ -1448,6 +2035,81 @@ const HomeScreen = ({ assets, loading, error, onRetry }: { assets: any, loading:
   );
 };
 
+const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="relative w-full max-w-lg bg-[#FFF6E5] rounded-[32px] shadow-2xl overflow-hidden border-8 border-[#C89B6D]/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Wood Texture Border Effect */}
+            <div className="absolute inset-0 border-[12px] border-[#C89B6D]/10 pointer-events-none rounded-[24px]" />
+            
+            {/* Header */}
+            <div className="p-8 flex justify-between items-center bg-white/50 border-b border-[#C89B6D]/10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-pikachu/20 rounded-full flex items-center justify-center">
+                  <svg viewBox="0 0 100 100" className="w-8 h-8">
+                    <circle cx="50" cy="60" r="30" fill="#FBD743" />
+                    <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
+                    <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
+                    <circle cx="40" cy="58" r="3" fill="#333" />
+                    <circle cx="60" cy="58" r="3" fill="#333" />
+                    <circle cx="30" cy="68" r="5" fill="#FF0000" opacity="0.6" />
+                    <circle cx="70" cy="68" r="5" fill="#FF0000" opacity="0.6" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-serif italic text-[#202124]">Need Help, Trainer?</h2>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-stone-200 rounded-full transition-colors"
+              >
+                <X size={24} className="text-muted" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-8 space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-[#C89B6D] uppercase tracking-widest">Your Message</label>
+                <textarea 
+                  placeholder="Type your doubt here..."
+                  className="w-full h-40 p-6 bg-white rounded-2xl border-2 border-[#C89B6D]/10 focus:border-pikachu/50 outline-none transition-all resize-none font-medium text-ink placeholder:text-muted/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-[#C89B6D] uppercase tracking-widest">Optional Attachment</label>
+                <div className="w-full p-8 border-2 border-dashed border-[#C89B6D]/20 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/50 transition-all cursor-pointer group">
+                  <Leaf size={32} className="text-[#A7D8F0] group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-medium text-muted">Attach screenshot</span>
+                </div>
+              </div>
+
+              <button className="w-full py-5 bg-[#FFCC70] text-[#202124] font-bold rounded-2xl shadow-lg shadow-orange-200/50 hover:bg-[#ffbd4a] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 active:scale-95">
+                <Send size={20} />
+                Send to Teacher
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -1456,6 +2118,7 @@ export default function App() {
   const currentLesson = useStore((state) => state.currentLesson);
   const setLesson = useStore((state) => state.setLesson);
   const [view, setView] = useState<'lesson' | 'choose_action' | 'video' | 'quiz' | 'simpler_quiz' | 'practice'>('lesson');
+  const [navigationHistory, setNavigationHistory] = useState<{ view: string, lesson: string }[]>([]);
   const { assets, loading, error, generate } = useAssets();
 
   const setScore = useStore((state) => state.setScore);
@@ -1466,7 +2129,69 @@ export default function App() {
     }
   }, [user?.isLoggedIn]);
 
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+
+  // Track navigation history
+  React.useEffect(() => {
+    if (!user?.isLoggedIn) {
+      setNavigationHistory([]);
+      return;
+    }
+
+    const currentState = { view, lesson: currentLesson || '' };
+    
+    setNavigationHistory(prev => {
+      if (prev.length === 0) {
+        if (!currentLesson) return [];
+        return [currentState];
+      }
+
+      const last = prev[prev.length - 1];
+      if (last.view === currentState.view && last.lesson === currentState.lesson) {
+        return prev;
+      }
+
+      // If we are moving back (i.e., the new state is the one before the last one)
+      if (prev.length > 1) {
+        const secondLast = prev[prev.length - 2];
+        if (secondLast.view === currentState.view && secondLast.lesson === currentState.lesson) {
+          return prev.slice(0, -1);
+        }
+      }
+
+      return [...prev, currentState];
+    });
+  }, [view, currentLesson, user?.isLoggedIn]);
+
+  const handleGlobalBack = () => {
+    if (isHelpModalOpen) {
+      setIsHelpModalOpen(false);
+      return;
+    }
+
+    if (navigationHistory.length <= 1) {
+      // Go back to dashboard
+      setLesson('');
+      setView('lesson');
+      setNavigationHistory([]);
+      return;
+    }
+
+    const prev = navigationHistory[navigationHistory.length - 2];
+    setLesson(prev.lesson);
+    setView(prev.view as any);
+  };
+
   const handleBackToDashboard = () => {
+    setLesson('');
+    setView('lesson');
+  };
+
+  const handleLessonBack = () => {
+    setView('choose_action');
+  };
+
+  const handleChooseActionBack = () => {
     setLesson('');
     setView('lesson');
   };
@@ -1492,7 +2217,45 @@ export default function App() {
   };
 
   return (
-    <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain">
+    <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain relative">
+      {/* Persistent Back Button */}
+      <AnimatePresence>
+        {(!!currentLesson || isHelpModalOpen) && user?.isLoggedIn && (
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            onClick={handleGlobalBack}
+            className="fixed top-12 left-10 z-[110] p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm border border-stone-200 text-[#202124] hover:scale-110 transition-all group"
+            title="Go Back"
+          >
+            <ChevronLeft size={24} />
+            {/* Subtle Glow */}
+            <div className="absolute inset-0 rounded-full bg-[#202124]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Persistent Help Button */}
+      <button 
+        onClick={() => setIsHelpModalOpen(true)}
+        className="fixed top-14 right-10 z-50 flex flex-col items-center gap-1 group"
+      >
+        <div className="p-3 bg-[#A7D8F0] text-white rounded-full shadow-lg hover:scale-110 hover:shadow-[#A7D8F0]/30 transition-all">
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          >
+            <Leaf size={24} className="fill-current" />
+          </motion.div>
+        </div>
+        <span className="text-[10px] font-bold text-[#202124] uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">
+          Need Help?
+        </span>
+      </button>
+
+      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+
       {user?.isLoggedIn && (
         <Navbar 
           user={user} 
@@ -1504,11 +2267,20 @@ export default function App() {
       <AnimatePresence mode="wait">
         {!user?.isLoggedIn ? (
           <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoginPage />
+            <LoginPage assets={assets} />
           </motion.div>
         ) : !currentLesson ? (
           <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
-            <HomeScreen assets={assets} loading={loading} error={error} onRetry={generate} />
+            <HomeScreen 
+              assets={assets} 
+              loading={loading} 
+              error={error} 
+              onRetry={generate} 
+              onSelectLesson={(id) => {
+                setLesson(id);
+                setView('choose_action');
+              }}
+            />
           </motion.div>
         ) : (
           <motion.div 
@@ -1528,6 +2300,7 @@ export default function App() {
                     setView('choose_action');
                   }
                 }} 
+                onBack={handleLessonBack}
               />
             )}
             {view === 'choose_action' && (
@@ -1536,12 +2309,15 @@ export default function App() {
                 onWatchVideo={() => setView('video')}
                 onStartQuiz={() => setView('quiz')}
                 onStartPractice={() => setView('practice')}
+                onBack={handleChooseActionBack}
               />
             )}
             {view === 'practice' && (
               <InteractivePractice 
                 lessonId={currentLesson}
                 onComplete={() => setView('quiz')}
+                onWatchVideo={() => setView('video')}
+                onHelp={() => setIsHelpModalOpen(true)}
                 assets={assets}
               />
             )}
