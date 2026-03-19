@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Sparkles,
   ChevronLeft,
+  ChevronDown,
   CheckCircle2,
   Circle,
   Award,
@@ -344,7 +345,7 @@ const GrammaChu = ({ reaction = 'happy', message, customSprite }: { reaction?: '
   const messages = {
     happy: "Ready to begin!",
     thinking: "Let's explore!",
-    sad: "Keep going, Trainer!",
+    sad: "Keep going!",
     excited: "Excellent work!",
     surprised: "Wow! You're fast!",
     sleeping: "Zzz... Grammar is fun...",
@@ -367,7 +368,7 @@ const GrammaChu = ({ reaction = 'happy', message, customSprite }: { reaction?: '
 
   return (
     <motion.div 
-      className="relative w-24 h-24 mx-auto mb-6"
+      className="relative w-24 h-24 mx-auto mb-10"
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -387,9 +388,11 @@ const GrammaChu = ({ reaction = 'happy', message, customSprite }: { reaction?: '
           initial={{ opacity: 0, y: 10, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
-          className="absolute -top-10 -right-16 bg-white px-4 py-2 rounded-full shadow-sm border border-stone-100 text-[11px] font-bold uppercase tracking-widest text-muted whitespace-nowrap z-10"
+          className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-2xl shadow-xl border border-stone-100 text-[11px] font-bold uppercase tracking-widest text-teal-800 text-center leading-tight max-w-[200px] z-20"
         >
           {message || messages[reaction]}
+          {/* Speech Bubble Triangle */}
+          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-stone-100 rotate-45" />
         </motion.div>
       </AnimatePresence>
     </motion.div>
@@ -454,6 +457,128 @@ const WORD_BANK = {
   nonNouns: ["Run","Jump","Quickly","Happy","Blue","Fast","Bright","Slowly","Soft","Fly","Sing","Laugh","Big","Small"] 
 };
 
+// --- Verb Practice Data & Logic --- // ← UPDATED 2026
+const VERB_ROOTS = [
+  { root: "eat", continuous: "eating", yesterday: "ate", hint: "He ate yesterday!" },
+  { root: "run", continuous: "running", yesterday: "ran", hint: "He ran yesterday!" },
+  { root: "jump", continuous: "jumping", yesterday: "jumped", hint: "He jumped earlier!" },
+  { root: "sing", continuous: "singing", yesterday: "sang", hint: "He sang a song!" },
+  { root: "fly", continuous: "flying", yesterday: "flew", hint: "He flew high!" }
+];
+
+const TIME_CLUES = ["Yesterday", "Now", "Every day"];
+
+const generateVerbRound = (roundIndex: number) => {
+  const rootVerb = VERB_ROOTS[roundIndex % VERB_ROOTS.length];
+  const timeClue = TIME_CLUES[Math.floor(Math.random() * TIME_CLUES.length)];
+  
+  let target = "";
+  let hint = "";
+  
+  if (timeClue === "Yesterday") {
+    target = rootVerb.yesterday;
+    hint = `He ${target} yesterday!`;
+  } else if (timeClue === "Now") {
+    target = rootVerb.continuous;
+    hint = `He is ${target} now!`;
+  } else {
+    target = rootVerb.root;
+    hint = `He likes to ${target} every day!`;
+  }
+
+  // Exactly 3 cards: root, continuous, yesterday
+  const cards = [rootVerb.root, rootVerb.continuous, rootVerb.yesterday].sort(() => Math.random() - 0.5);
+
+  return {
+    root: rootVerb.root,
+    timeClue,
+    target,
+    cards,
+    hint
+  };
+};
+
+// --- Article Practice Data & Logic --- // ← UPDATED 2026
+const ARTICLE_CHALLENGES = [
+  { item: "apple", image: "https://img.pokemondb.net/sprites/items/apple.png", target: "an", hint: "Apple starts with a vowel sound!" },
+  { item: "pokéball", image: "https://img.pokemondb.net/sprites/items/friend-ball.png", target: "a", hint: "Pokéball starts with a consonant sound!" },
+  { item: "egg", image: "https://img.pokemondb.net/sprites/items/lucky-egg.png", target: "an", hint: "Egg starts with a vowel sound!" },
+  { item: "moon", image: "https://img.pokemondb.net/sprites/items/moon-stone.png", target: "the", hint: "There is only one moon!" },
+  { item: "umbrella", image: "https://img.pokemondb.net/sprites/items/red-card.png", target: "an", hint: "Umbrella starts with a vowel sound!" }
+];
+
+const ADJECTIVE_CHALLENGES = [
+  { 
+    id: 1,
+    targetOrder: ["beautiful", "large", "old", "round"],
+    hint: "Opinion before Size, Age before Shape!",
+    noun: "Mirror"
+  },
+  { 
+    id: 2,
+    targetOrder: ["small", "new", "red", "Japanese"],
+    hint: "Size before Age, Color before Origin!",
+    noun: "Dragon"
+  },
+  { 
+    id: 3,
+    targetOrder: ["funny", "little", "green", "plastic"],
+    hint: "Opinion before Size, Color before Material!",
+    noun: "Toy"
+  }
+];
+
+const generateAdjectiveRound = (roundIndex: number) => {
+  const challenge = ADJECTIVE_CHALLENGES[roundIndex % ADJECTIVE_CHALLENGES.length];
+  return {
+    ...challenge,
+    cards: [...challenge.targetOrder].sort(() => Math.random() - 0.5)
+  };
+};
+
+const LESSON_CHARACTERS: Record<string, { name: string, sprite: string, color: string, emoji: string }> = {
+  nouns: { 
+    name: "Pikachu", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
+    color: "#FBD743",
+    emoji: "⚡"
+  },
+  verbs: { 
+    name: "Charmander", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/4.png",
+    color: "#FF9D5C",
+    emoji: "🔥"
+  },
+  articles: { 
+    name: "Eevee", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/133.png",
+    color: "#B88E6F",
+    emoji: "🦊"
+  },
+  prepositions: { 
+    name: "Squirtle", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/7.png",
+    color: "#7CC7DA",
+    emoji: "🐢"
+  },
+  tenses: { 
+    name: "Snorlax", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png",
+    color: "#4A7D8C",
+    emoji: "💤"
+  },
+  adjectives: { 
+    name: "Dragonite", 
+    sprite: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/149.png",
+    color: "#F7B85D",
+    emoji: "🐉"
+  },
+};
+
+const generateArticleRound = (roundIndex: number) => {
+  return ARTICLE_CHALLENGES[roundIndex % ARTICLE_CHALLENGES.length];
+};
+
 const CHARACTERS = ["Pikachu","Eevee","Togepi","Snorlax","Dragonite","Bulbasaur","Charmander","Squirtle","Jigglypuff","Meowth"];
 
 const generateSessionWords = () => {
@@ -478,6 +603,16 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
   assets?: any
 }) => {
   const [step, setStep] = useState(0);
+  const [verbStep, setVerbStep] = useState(0);
+  const [articleStep, setArticleStep] = useState(0); // ← UPDATED 2026
+  const [adjectiveStep, setAdjectiveStep] = useState(0); // ← UPDATED 2026
+  const [currentVerbChallenge, setCurrentVerbChallenge] = useState<any>(null); // ← UPDATED 2026
+  const [currentArticleChallenge, setCurrentArticleChallenge] = useState<any>(null); // ← UPDATED 2026
+  const [currentAdjectiveChallenge, setCurrentAdjectiveChallenge] = useState<any>(null); // ← UPDATED 2026
+  const [verbFeedback, setVerbFeedback] = useState<{ type: 'correct' | 'wrong', card: string } | null>(null);
+  const [articleFeedback, setArticleFeedback] = useState<{ type: 'correct' | 'wrong', card: string } | null>(null); // ← UPDATED 2026
+  const [adjectiveFeedback, setAdjectiveFeedback] = useState<{ type: 'correct' | 'wrong', message?: string } | null>(null); // ← UPDATED 2026
+  const [selectedAdjectives, setSelectedAdjectives] = useState<string[]>([]); // ← UPDATED 2026
   const [sessionWords, setSessionWords] = useState<any[]>([]); // ← UPDATED 2026
   const [character, setCharacter] = useState(""); // ← UPDATED 2026
   const [collectedNouns, setCollectedNouns] = useState<number[]>([]);
@@ -488,18 +623,42 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
   const [currentPreposition, setCurrentPreposition] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [mascotReaction, setMascotReaction] = useState<'happy' | 'thinking' | 'sad' | 'excited' | 'confused'>('happy');
+  const [chestState, setChestState] = useState<'closed' | 'open' | 'half-closed'>('closed'); // ← UPDATED 2026
+  const [mirrorState, setMirrorState] = useState<'blank' | 'glow' | 'cracked'>('blank'); // ← UPDATED 2026
+  const [itemFlying, setItemFlying] = useState(false); // ← UPDATED 2026
   const containerRef = React.useRef<HTMLDivElement>(null);
   const bagRef = React.useRef<HTMLDivElement>(null);
+  const characterRef = React.useRef<HTMLDivElement>(null);
+  const chestRef = React.useRef<HTMLDivElement>(null); // ← UPDATED 2026
+  const mirrorRef = React.useRef<HTMLDivElement>(null); // ← UPDATED 2026
   const { assets: localAssets, loading, error, generate } = useAssets();
   
   const assets = sharedAssets || localAssets;
 
   // ← UPDATED 2026: Full session reset with character and word randomization
   React.useEffect(() => {
-    setSessionWords(generateSessionWords());
-    setCharacter(getRandomCharacter());
-    setCollectedNouns([]);
+    if (lessonId === 'verbs') {
+      setVerbStep(0);
+      setCurrentVerbChallenge(generateVerbRound(0));
+    } else if (lessonId === 'articles') {
+      setArticleStep(0);
+      setCurrentArticleChallenge(generateArticleRound(0));
+      setChestState('closed');
+      setItemFlying(false);
+    } else if (lessonId === 'adjectives') {
+      setAdjectiveStep(0);
+      setCurrentAdjectiveChallenge(generateAdjectiveRound(0));
+      setSelectedAdjectives([]);
+      setMirrorState('blank');
+    } else {
+      setSessionWords(generateSessionWords());
+      setCharacter(getRandomCharacter());
+      setCollectedNouns([]);
+    }
     setIsDone(false);
+    setVerbFeedback(null);
+    setArticleFeedback(null);
+    setAdjectiveFeedback(null);
   }, [lessonId]);
 
   // Helper: Check if two rectangles overlap by at least 30%
@@ -549,6 +708,126 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
     setTimeout(() => setNounFeedback(null), 1000);
   };
 
+  const handleVerbDragEnd = (event: any, info: any, card: string) => {
+    if (!characterRef.current || !currentVerbChallenge) return;
+    
+    const charRect = characterRef.current.getBoundingClientRect();
+    const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+
+    const isOverChar = checkOverlap(cardRect, charRect);
+
+    if (isOverChar) {
+      if (card === currentVerbChallenge.target) {
+        setVerbFeedback({ type: 'correct', card });
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        
+        setTimeout(() => {
+          if (verbStep < 4) { // 5 rounds total
+            const nextStep = verbStep + 1;
+            setVerbStep(nextStep);
+            setCurrentVerbChallenge(generateVerbRound(nextStep));
+            setVerbFeedback(null);
+          } else {
+            setIsDone(true);
+          }
+        }, 2000);
+      } else {
+        setVerbFeedback({ type: 'wrong', card });
+        setTimeout(() => setVerbFeedback(null), 2500);
+      }
+    }
+  };
+
+  const handleArticleDragEnd = (event: any, info: any, card: string) => {
+    if (!chestRef.current || !currentArticleChallenge) return;
+    
+    const chestRect = chestRef.current.getBoundingClientRect();
+    const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+
+    const isOverChest = checkOverlap(cardRect, chestRect);
+
+    if (isOverChest) {
+      if (card === currentArticleChallenge.target) {
+        setArticleFeedback({ type: 'correct', card });
+        setChestState('open');
+        setItemFlying(true);
+        confetti({ 
+          particleCount: 150, 
+          spread: 100, 
+          origin: { y: 0.6 },
+          colors: ['#FFD700', '#FFA500', '#FFFFFF'] // Golden sparkles
+        });
+        
+        setTimeout(() => {
+          if (articleStep < 4) { // 5 rounds total
+            const nextStep = articleStep + 1;
+            setArticleStep(nextStep);
+            setCurrentArticleChallenge(generateArticleRound(nextStep));
+            setArticleFeedback(null);
+            setChestState('closed');
+            setItemFlying(false);
+          } else {
+            setIsDone(true);
+          }
+        }, 3000);
+      } else {
+        setArticleFeedback({ type: 'wrong', card });
+        setChestState('half-closed');
+        setTimeout(() => {
+          setArticleFeedback(null);
+          setChestState('closed');
+        }, 2500);
+      }
+    }
+  };
+
+  const handleAdjectiveDrop = (event: any, info: any, card: string) => {
+    if (!mirrorRef.current || !currentAdjectiveChallenge) return;
+    
+    const mirrorRect = mirrorRef.current.getBoundingClientRect();
+    const cardRect = (event.target as HTMLElement).getBoundingClientRect();
+
+    const isOverMirror = checkOverlap(cardRect, mirrorRect);
+
+    if (isOverMirror) {
+      if (selectedAdjectives.includes(card)) return;
+
+      const newSelected = [...selectedAdjectives, card];
+      setSelectedAdjectives(newSelected);
+
+      // Check if the order is correct so far
+      const isCorrectSoFar = newSelected.every((val, index) => val === currentAdjectiveChallenge.targetOrder[index]);
+
+      if (!isCorrectSoFar) {
+        setAdjectiveFeedback({ type: 'wrong', message: currentAdjectiveChallenge.hint });
+        setMirrorState('cracked');
+        setTimeout(() => {
+          setSelectedAdjectives([]);
+          setAdjectiveFeedback(null);
+          setMirrorState('blank');
+        }, 2000);
+      } else if (newSelected.length === currentAdjectiveChallenge.targetOrder.length) {
+        // All correct!
+        setAdjectiveFeedback({ type: 'correct', message: "Order matters!" });
+        setMirrorState('glow');
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+        
+        setTimeout(() => {
+          if (adjectiveStep < 2) { // 3 rounds total
+            const nextStep = adjectiveStep + 1;
+            setAdjectiveStep(nextStep);
+            setCurrentAdjectiveChallenge(generateAdjectiveRound(nextStep));
+            setSelectedAdjectives([]);
+            setAdjectiveFeedback(null);
+            setMirrorState('blank');
+          } else {
+            setIsDone(true);
+          }
+        }, 3500);
+      }
+    }
+  };
+
   // Initial asset generation for prepositions
   React.useEffect(() => {
     if (lessonId === 'prepositions' && !assets.bg && !loading && !sharedAssets) {
@@ -587,31 +866,783 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
     { name: "Aksa Susan Abraham", xp: 890, rank: 4 }
   ];
 
-  if (lessonId !== 'prepositions') {
+  if (lessonId === 'verbs') {
+    if (!currentVerbChallenge) return null;
+    const lessonChar = LESSON_CHARACTERS.verbs;
+    
+    return (
+      <div className="max-w-4xl w-full flex flex-col items-center relative">
+        <div className="text-center mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Let's Practice</p>
+          <h2 className="text-5xl font-serif italic mb-6">Mastering Verbs</h2>
+          
+          {/* Character Area - Charmander Exclusively for Verbs */}
+          <div className="flex justify-center mb-8">
+            <motion.div 
+              ref={characterRef}
+              animate={verbFeedback?.type === 'correct' ? { 
+                scale: [1, 1.15, 1],
+                y: [0, -20, 0],
+                ...(verbFeedback.card.includes('run') || verbFeedback.card.includes('running') || verbFeedback.card.includes('ran') ? { 
+                  x: [-40, 40, -40, 40, 0],
+                  skewX: [-10, 10, -10, 10, 0]
+                } : {}),
+                ...(verbFeedback.card.includes('jump') || verbFeedback.card.includes('jumping') || verbFeedback.card.includes('jumped') ? { 
+                  y: [0, -100, 0, -60, 0],
+                  scaleY: [1, 0.8, 1.2, 1]
+                } : {}),
+                ...(verbFeedback.card.includes('eat') || verbFeedback.card.includes('eating') || verbFeedback.card.includes('ate') ? { 
+                  scale: [1, 1.3, 0.9, 1.2, 1],
+                  rotate: [0, 5, -5, 5, 0]
+                } : {}),
+                ...(verbFeedback.card.includes('sing') ? { rotate: [0, -15, 15, -15, 15, 0] } : {}),
+                ...(verbFeedback.card.includes('fly') ? { y: [0, -120, 0], scale: [1, 0.9, 1.1, 1] } : {})
+              } : verbFeedback?.type === 'wrong' ? {
+                x: [0, -5, 5, -5, 5, 0]
+              } : {}}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
+              className="relative w-64 h-64 flex items-center justify-center"
+            >
+              <img 
+                src={lessonChar.sprite} 
+                alt={lessonChar.name} 
+                className={`w-full h-full object-contain transition-all ${verbFeedback?.type === 'wrong' ? 'grayscale brightness-50' : ''}`}
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Beaming Reaction Overlays - Signature Wise Beaming Reaction */}
+              {verbFeedback?.type === 'correct' && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    {/* Curved Eyes */}
+                    <path d="M35,40 Q40,35 45,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M55,40 Q60,35 65,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    {/* Pink Cheek Glow */}
+                    <circle cx="25" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                    <circle cx="75" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Speech Bubbles */}
+              <AnimatePresence>
+                {verbFeedback?.type === 'correct' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -40 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-20 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-pikachu text-teal-900 font-black z-50 min-w-[250px] text-center"
+                  >
+                    Perfect subject-verb agreement!
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
+                  </motion.div>
+                )}
+                {verbFeedback?.type === 'wrong' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -60 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-24 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400 text-rose-600 font-black z-50 min-w-[200px] text-center"
+                  >
+                    Subject doesn't match!
+                    <div className="text-sm mt-1 opacity-80 font-bold">Hint: {currentVerbChallenge.hint}</div>
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-rose-400 rotate-45" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Trainer Pop-in - Ash pops to screen on correct answer */}
+              <AnimatePresence>
+                {verbFeedback?.type === 'correct' && (
+                  <motion.div
+                    initial={{ x: 100, opacity: 0, scale: 0.5 }}
+                    animate={{ x: 0, opacity: 1, scale: 1 }}
+                    exit={{ x: 100, opacity: 0 }}
+                    className="absolute -right-32 bottom-0 w-48 h-48 z-40"
+                  >
+                    <img 
+                      src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/trainers/1.png" 
+                      alt="Ash" 
+                      className="w-full h-full object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Star Burst */}
+              <AnimatePresence>
+                {verbFeedback?.type === 'correct' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 0 }}
+                    animate={{ opacity: 1, y: -120 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-0 text-amber-500 font-black text-5xl z-50 drop-shadow-lg"
+                  >
+                    +10 ⭐
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          <p className="text-2xl text-ink font-bold">
+            “Drag the correct verb form onto Charmander!”
+          </p>
+        </div>
+
+        <div className="relative w-full min-h-[400px] flex flex-col items-center justify-center">
+          {!isDone && (
+            <>
+              {/* Time Clue */}
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                key={currentVerbChallenge.timeClue}
+                className="mb-8"
+              >
+                <span className="px-10 py-4 bg-amber-100 text-amber-800 rounded-full font-black text-3xl shadow-sm border-2 border-amber-200">
+                  {currentVerbChallenge.timeClue}
+                </span>
+              </motion.div>
+
+              <div className="flex flex-wrap justify-center gap-6 mt-8">
+                {currentVerbChallenge.cards.map((card: string) => (
+                  <motion.div
+                    key={card}
+                    drag
+                    dragSnapToOrigin
+                    onDragEnd={(e, info) => handleVerbDragEnd(e, info, card)}
+                    whileHover={{ scale: 1.05 }}
+                    whileDrag={{ scale: 1.1, zIndex: 50 }}
+                    className={`px-8 py-5 bg-white rounded-2xl shadow-xl border-2 cursor-grab active:cursor-grabbing font-black text-xl transition-all select-none ${
+                      verbFeedback?.card === card && verbFeedback.type === 'wrong' 
+                        ? 'border-rose-500 bg-rose-50 text-rose-600' 
+                        : verbFeedback?.card === card && verbFeedback.type === 'correct'
+                        ? 'border-pikachu bg-amber-50 text-amber-700 shadow-[0_0_20px_rgba(251,215,67,0.4)]'
+                        : 'border-stone-100 text-ink'
+                    }`}
+                    style={{ touchAction: 'none' }}
+                  >
+                    {card}
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Post-Practice Options */}
+          <AnimatePresence>
+            {isDone && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-3xl space-y-8"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <button 
+                    onClick={onWatchVideo}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-blue-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                      <Play size={28} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Watch Videos</h3>
+                    <p className="text-xs text-muted font-medium">Visual review.</p>
+                  </button>
+
+                  <div className="p-8 bg-green-50 rounded-[40px] shadow-xl border border-green-100 text-left relative overflow-hidden">
+                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                      <CheckCircle2 size={28} className="text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Practice</h3>
+                    <p className="text-xs text-green-700 font-bold">Already Done!</p>
+                    <div className="absolute -right-4 -bottom-4 opacity-10">
+                      <CheckCircle2 size={100} />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={onHelp}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-teal-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-teal-100 transition-colors">
+                      <Leaf size={28} className="text-teal-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Help</h3>
+                    <p className="text-xs text-muted font-medium">Ask Sensei.</p>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={onComplete}
+                  className="w-full py-6 bg-ink text-white font-bold rounded-3xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-2xl btn-plushy group"
+                >
+                  <span className="text-2xl">Quiz time</span>
+                  <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  if (lessonId === 'adjectives') {
+    if (!currentAdjectiveChallenge) return null;
+    const lessonChar = LESSON_CHARACTERS.adjectives;
+    
+    return (
+      <div className="max-w-4xl w-full flex flex-col items-center relative">
+        <div className="text-center mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Let's Practice</p>
+          <h2 className="text-5xl font-serif italic mb-4">Mastering Adjectives</h2>
+          
+          {/* Character - Dragonite Exclusive for Adjectives */}
+          <div className="flex justify-center mb-6">
+            <motion.div
+              animate={adjectiveFeedback?.type === 'correct' ? {
+                scale: [1, 1.2, 1],
+                rotate: [0, 5, -5, 0],
+                y: [0, -20, 0]
+              } : {}}
+              className="relative w-48 h-48"
+            >
+              <img 
+                src={lessonChar.sprite} 
+                alt={lessonChar.name} 
+                className={`w-full h-full object-contain drop-shadow-2xl transition-all ${adjectiveFeedback?.type === 'wrong' ? 'grayscale' : ''}`}
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Beaming Reaction Overlays */}
+              {adjectiveFeedback?.type === 'correct' && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <path d="M35,40 Q40,35 45,40" fill="none" stroke="#333" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M55,40 Q60,35 65,40" fill="none" stroke="#333" strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="25" cy="55" r="6" fill="#FFB6C1" opacity="0.8" />
+                    <circle cx="75" cy="55" r="6" fill="#FFB6C1" opacity="0.8" />
+                  </svg>
+                </div>
+              )}
+
+              <AnimatePresence>
+                {adjectiveFeedback && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -40 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className={`absolute -top-16 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 font-black z-50 min-w-[250px] text-center ${
+                      adjectiveFeedback.type === 'correct' ? 'border-pikachu text-teal-900' : 'border-rose-400 text-rose-600'
+                    }`}
+                  >
+                    {adjectiveFeedback.message}
+                    <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 rotate-45 ${
+                      adjectiveFeedback.type === 'correct' ? 'border-pikachu' : 'border-rose-400'
+                    }`} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          <p className="text-2xl text-ink font-bold">
+            “Drag the adjectives in the correct order!”
+          </p>
+        </div>
+
+        <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center">
+          {!isDone && (
+            <>
+              {/* Magic Mirror & Selected Adjectives */}
+              <div className="relative mb-12 flex flex-col items-center">
+                <div className="mb-8 flex gap-3 h-16 items-center justify-center">
+                  {currentAdjectiveChallenge.targetOrder.map((_, idx) => (
+                    <div 
+                      key={idx}
+                      className={`w-32 h-14 rounded-xl border-2 border-dashed flex items-center justify-center transition-all ${
+                        selectedAdjectives[idx] ? 'border-primary bg-primary/5' : 'border-stone-200'
+                      }`}
+                    >
+                      {selectedAdjectives[idx] && (
+                        <motion.span 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="font-black text-primary"
+                        >
+                          {selectedAdjectives[idx]}
+                        </motion.span>
+                      )}
+                    </div>
+                  ))}
+                  <span className="text-2xl font-black text-ink ml-2">{currentAdjectiveChallenge.noun}</span>
+                </div>
+
+                <motion.div 
+                  ref={mirrorRef}
+                  animate={mirrorState === 'glow' ? { 
+                    scale: [1, 1.05, 1],
+                    boxShadow: ["0 0 0px rgba(251,215,67,0)", "0 0 40px rgba(251,215,67,0.6)", "0 0 0px rgba(251,215,67,0)"]
+                  } : mirrorState === 'cracked' ? {
+                    x: [0, -5, 5, -5, 5, 0]
+                  } : {}}
+                  className="relative w-64 h-80 bg-stone-100 rounded-t-full border-8 border-stone-300 shadow-inner overflow-hidden"
+                >
+                  {/* Mirror Surface */}
+                  <div className={`absolute inset-0 transition-colors duration-500 ${
+                    mirrorState === 'glow' ? 'bg-amber-100' : 'bg-stone-200'
+                  }`}>
+                    {/* Reflection / Silhouette */}
+                    <AnimatePresence mode="wait">
+                      {mirrorState === 'glow' ? (
+                        <motion.img
+                          key="dragonite"
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 0.8 }}
+                          src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/149.png"
+                          className="w-full h-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <motion.div
+                          key="silhouette"
+                          className="w-full h-full flex items-center justify-center opacity-20"
+                        >
+                          <div className="w-40 h-40 bg-stone-400 rounded-full blur-xl" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Crack Overlay */}
+                    {mirrorState === 'cracked' && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <svg viewBox="0 0 100 100" className="w-full h-full stroke-stone-400 stroke-[0.5] fill-none">
+                          <path d="M50,0 L45,30 L55,50 L40,80 L50,100" />
+                          <path d="M0,50 L30,45 L60,55 L100,40" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Draggable Adjective Cards */}
+              <div className="flex flex-wrap justify-center gap-4 max-w-2xl">
+                {currentAdjectiveChallenge.cards.map((card: string) => (
+                  <motion.div
+                    key={card}
+                    drag
+                    dragSnapToOrigin
+                    onDragEnd={(e, info) => handleAdjectiveDrop(e, info, card)}
+                    whileHover={{ scale: 1.05 }}
+                    whileDrag={{ scale: 1.1, zIndex: 50 }}
+                    className={`px-8 py-4 bg-white rounded-2xl shadow-xl border-2 cursor-grab active:cursor-grabbing font-black text-lg transition-all select-none ${
+                      selectedAdjectives.includes(card) ? 'opacity-30 pointer-events-none' : 'border-stone-100 text-ink'
+                    }`}
+                    style={{ touchAction: 'none' }}
+                  >
+                    {card}
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Post-Practice Options */}
+          <AnimatePresence>
+            {isDone && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-3xl space-y-8"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <button 
+                    onClick={onWatchVideo}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-blue-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                      <Play size={28} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Watch Videos</h3>
+                    <p className="text-xs text-muted font-medium">Visual review.</p>
+                  </button>
+
+                  <div className="p-8 bg-green-50 rounded-[40px] shadow-xl border border-green-100 text-left relative overflow-hidden">
+                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                      <CheckCircle2 size={28} className="text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Practice</h3>
+                    <p className="text-xs text-green-700 font-bold">Already Done!</p>
+                    <div className="absolute -right-4 -bottom-4 opacity-10">
+                      <CheckCircle2 size={100} />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={onHelp}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-teal-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-teal-100 transition-colors">
+                      <Leaf size={28} className="text-teal-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Help</h3>
+                    <p className="text-xs text-muted font-medium">Ask Sensei.</p>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={onComplete}
+                  className="w-full py-6 bg-ink text-white font-bold rounded-3xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-2xl btn-plushy group"
+                >
+                  <span className="text-2xl">Quiz time</span>
+                  <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  if (lessonId === 'articles') {
+    if (!currentArticleChallenge) return null;
+    const lessonChar = LESSON_CHARACTERS.articles;
+    
     return (
       <div className="max-w-4xl w-full flex flex-col items-center relative">
         <div className="text-center mb-8">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Interactive Practice</p>
-          <h2 className="text-5xl font-serif italic mb-4">Mastering Nouns</h2> {/* ← UPDATED 2026 */}
-          <p className="text-lg text-muted font-medium">
-            Drag the nouns into {character}'s bag. {/* ← UPDATED 2026: Dynamic character name */}
+          <h2 className="text-5xl font-serif italic mb-6">Mastering Articles</h2>
+
+          {/* Eevee - Centered in the blank space */}
+          <div className="flex justify-center mb-8">
+            <motion.div
+              ref={characterRef}
+              animate={articleFeedback?.type === 'correct' ? { 
+                scale: [1, 1.15, 1],
+                y: [0, -20, 0],
+                rotate: [0, 10, -10, 10, 0]
+              } : articleFeedback?.type === 'wrong' ? {
+                x: [0, -5, 5, -5, 5, 0]
+              } : {}}
+              className="relative w-64 h-64 flex items-center justify-center"
+            >
+              <img 
+                src={lessonChar.sprite} 
+                alt={lessonChar.name} 
+                className={`w-full h-full object-contain transition-all ${articleFeedback?.type === 'wrong' ? 'grayscale brightness-50' : ''}`}
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Beaming Reaction Overlays */}
+              {articleFeedback?.type === 'correct' && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <path d="M35,40 Q40,35 45,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M55,40 Q60,35 65,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="25" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                    <circle cx="75" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Speech Bubbles */}
+              <AnimatePresence>
+                {articleFeedback?.type === 'correct' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -40 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-20 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-pikachu text-teal-900 font-black z-50 min-w-[250px] text-center"
+                  >
+                    A or An depends on the first sound!
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
+                  </motion.div>
+                )}
+                {articleFeedback?.type === 'wrong' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -40 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-20 left-1/2 -translate-x-1/2 bg-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-rose-400 text-rose-600 font-black z-50 min-w-[200px] text-center"
+                  >
+                    Listen to the starting sound!
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-rose-400 rotate-45" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Star Burst */}
+              <AnimatePresence>
+                {articleFeedback?.type === 'correct' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 0 }}
+                    animate={{ opacity: 1, y: -120 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-0 text-amber-500 font-black text-5xl z-50 drop-shadow-lg"
+                  >
+                    +10 ⭐
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          <p className="text-2xl text-ink font-bold">
+            “Drag the correct article into the treasure chest!”
+          </p>
+        </div>
+
+        <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center">
+          {!isDone && (
+            <>
+              {/* Treasure Chest & Item */}
+              <div className="relative mb-12 flex flex-col items-center">
+                <div className="h-32 flex items-center justify-center mb-4">
+                  <AnimatePresence>
+                    {itemFlying && (
+                      <motion.div
+                        initial={{ scale: 0, y: 50, opacity: 0 }}
+                        animate={{ scale: 1.5, y: -50, opacity: 1, rotate: 360 }}
+                        className="relative z-30"
+                      >
+                        <div className="absolute inset-0 bg-amber-400 blur-2xl opacity-50 animate-pulse rounded-full" />
+                        <img 
+                          src={currentArticleChallenge.image} 
+                          alt={currentArticleChallenge.item} 
+                          className="w-24 h-24 object-contain relative z-10"
+                          referrerPolicy="no-referrer"
+                        />
+                      </motion.div>
+                    )}
+                    {!itemFlying && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center"
+                      >
+                        <p className="text-4xl font-black text-ink mb-2">I see ___ <span className="text-primary uppercase">{currentArticleChallenge.item}</span></p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <motion.div 
+                  ref={chestRef}
+                  animate={chestState === 'open' ? { 
+                    scale: [1, 1.1, 1],
+                    rotate: [0, -2, 2, 0]
+                  } : chestState === 'half-closed' ? {
+                    scale: [1, 0.95, 1],
+                    y: [0, 5, 0]
+                  } : {}}
+                  className="relative w-64 h-48"
+                >
+                  <svg viewBox="0 0 100 80" className="w-full h-full drop-shadow-2xl">
+                    <rect x="10" y="30" width="80" height="40" rx="4" fill="#5D4037" />
+                    <rect x="15" y="35" width="70" height="30" rx="2" fill="#795548" />
+                    <motion.g
+                      animate={chestState === 'open' ? { rotateX: -110, y: -10 } : chestState === 'half-closed' ? { rotateX: -20 } : { rotateX: 0 }}
+                      style={{ originY: '30px', transformStyle: 'preserve-3d' }}
+                    >
+                      <path d="M10,30 Q10,10 50,10 Q90,10 90,30 Z" fill="#5D4037" />
+                      <path d="M15,30 Q15,15 50,15 Q85,15 85,30 Z" fill="#795548" />
+                      <rect x="45" y="25" width="10" height="10" rx="2" fill="#FFD700" />
+                      <circle cx="50" cy="30" r="2" fill="#333" />
+                    </motion.g>
+                    {chestState === 'open' && (
+                      <motion.g
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <circle cx="30" cy="20" r="2" fill="#FFD700" />
+                        <circle cx="70" cy="15" r="1.5" fill="#FFD700" />
+                        <circle cx="50" cy="5" r="2.5" fill="#FFD700" />
+                      </motion.g>
+                    )}
+                  </svg>
+                </motion.div>
+              </div>
+
+              {/* Draggable Cards */}
+              <div className="flex justify-center gap-6">
+                {["a", "an", "the"].map((card) => (
+                  <motion.div
+                    key={card}
+                    drag
+                    dragSnapToOrigin
+                    onDragEnd={(e, info) => handleArticleDragEnd(e, info, card)}
+                    whileHover={{ scale: 1.1 }}
+                    whileDrag={{ scale: 1.2, zIndex: 50 }}
+                    className={`px-14 py-8 bg-white rounded-[32px] shadow-2xl border-4 cursor-grab active:cursor-grabbing font-black text-5xl transition-all select-none ${
+                      articleFeedback?.card === card && articleFeedback.type === 'wrong' 
+                        ? 'border-rose-500 bg-rose-50 text-rose-600' 
+                        : articleFeedback?.card === card && articleFeedback.type === 'correct'
+                        ? 'border-pikachu bg-amber-50 text-amber-700'
+                        : 'border-stone-100 text-ink'
+                    }`}
+                    style={{ touchAction: 'none' }}
+                  >
+                    {card}
+                  </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Post-Practice Options */}
+          <AnimatePresence>
+            {isDone && (
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-3xl space-y-8"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <button 
+                    onClick={onWatchVideo}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-blue-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
+                      <Play size={28} className="text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Watch Videos</h3>
+                    <p className="text-xs text-muted font-medium">Visual review.</p>
+                  </button>
+
+                  <div className="p-8 bg-green-50 rounded-[40px] shadow-xl border border-green-100 text-left relative overflow-hidden">
+                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mb-6">
+                      <CheckCircle2 size={28} className="text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Practice</h3>
+                    <p className="text-xs text-green-700 font-bold">Already Done!</p>
+                    <div className="absolute -right-4 -bottom-4 opacity-10">
+                      <CheckCircle2 size={100} />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={onHelp}
+                    className="p-8 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-teal-200 transition-all group text-left btn-plushy"
+                  >
+                    <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-teal-100 transition-colors">
+                      <Leaf size={28} className="text-teal-600" />
+                    </div>
+                    <h3 className="text-xl font-serif italic mb-1">Help</h3>
+                    <p className="text-xs text-muted font-medium">Ask Sensei.</p>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={onComplete}
+                  className="w-full py-6 bg-ink text-white font-bold rounded-3xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 shadow-2xl btn-plushy group"
+                >
+                  <span className="text-2xl">Quiz time</span>
+                  <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  if (lessonId === 'nouns') {
+    const lessonChar = LESSON_CHARACTERS.nouns;
+    
+    return (
+      <div className="max-w-4xl w-full flex flex-col items-center relative">
+        <div className="text-center mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Interactive Practice</p>
+          <h2 className="text-5xl font-serif italic mb-6">Mastering Nouns</h2>
+          
+          {/* Character Area - Pikachu Exclusively for Nouns */}
+          <div className="flex justify-center mb-8">
+            <motion.div 
+              ref={characterRef}
+              animate={nounFeedback?.type === 'correct' ? { 
+                scale: [1, 1.15, 1],
+                y: [0, -20, 0],
+                rotate: [0, 5, -5, 5, -5, 0]
+              } : nounFeedback?.type === 'wrong' ? {
+                x: [0, -5, 5, -5, 5, 0]
+              } : {}}
+              className="relative w-64 h-64 flex items-center justify-center"
+            >
+              <img 
+                src={lessonChar.sprite} 
+                alt={lessonChar.name} 
+                className={`w-full h-full object-contain transition-all ${nounFeedback?.type === 'wrong' ? 'grayscale brightness-50' : ''}`}
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Beaming Reaction Overlays */}
+              {nounFeedback?.type === 'correct' && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    <path d="M35,40 Q40,35 45,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M55,40 Q60,35 65,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                    <circle cx="25" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                    <circle cx="75" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                  </svg>
+                </div>
+              )}
+
+              {/* Speech Bubbles */}
+              <AnimatePresence>
+                {nounFeedback?.type === 'correct' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: -40 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="absolute -top-16 left-1/2 -translate-x-1/2 bg-white px-6 py-2 rounded-2xl shadow-xl border-2 border-pikachu text-lg font-black text-teal-900 z-50"
+                  >
+                    Yay!
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Star Burst */}
+              <AnimatePresence>
+                {nounFeedback?.type === 'correct' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 0 }}
+                    animate={{ opacity: 1, y: -120 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-0 text-amber-500 font-black text-5xl z-50 drop-shadow-lg"
+                  >
+                    +10 ⭐
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          <p className="text-2xl text-ink font-bold">
+            “Drag the nouns into {lessonChar.name}'s bag!”
           </p>
         </div>
         
         <div className="relative w-full min-h-[500px] flex flex-col items-center justify-center">
-          {/* The Bag - Restored Yellow Object with Beaming Reaction & Jiggle */}
+          {/* The Bag */}
           <motion.div 
             ref={bagRef}
             animate={{ 
-              scale: nounFeedback?.type === 'correct' ? [1, 1.15, 1] : 1, // ← UPDATED 2026: 0.3s celebratory bounce
-              rotate: nounFeedback?.type === 'correct' ? [0, 5, -5, 5, -5, 0] : 0 // ← UPDATED 2026: Jiggle animation
+              scale: nounFeedback?.type === 'correct' ? [1, 1.15, 1] : 1,
+              rotate: nounFeedback?.type === 'correct' ? [0, 5, -5, 5, -5, 0] : 0
             }}
             transition={{ duration: 0.3 }}
             className="relative z-10 mb-12"
           >
             <div className="relative w-56 h-56">
               <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl">
-                {/* Classic Bag Body */}
                 <path 
                   d="M25,45 Q25,25 50,25 Q75,25 75,45 L80,80 Q80,95 50,95 Q20,95 20,80 Z" 
                   fill="#FBD743" 
@@ -619,54 +1650,18 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
                   stroke="#C89B6D" 
                   strokeWidth="1.5"
                 />
-                
-                {/* Eyes - Wise Beaming Squinted Eyes on Correct Drop */}
-                {nounFeedback?.type === 'correct' ? (
-                  <>
-                    <path d="M38,65 Q42,62 46,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M54,65 Q58,62 62,65" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
-                    {/* Soft Pink Cheek Glow */}
-                    <circle cx="35" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
-                    <circle cx="65" cy="72" r="5" fill="#FFB6C1" opacity="0.6" />
-                  </>
-                ) : (
-                  <>
-                    <circle cx="42" cy="65" r="2" fill="#333" opacity="0.4" />
-                    <circle cx="58" cy="65" r="2" fill="#333" opacity="0.4" />
-                  </>
-                )}
-                
-                {/* Mouth - Big Wide Joyful Arc for "Happy" Reaction */}
-                {nounFeedback?.type === 'correct' ? (
-                  <path d="M42,76 Q50,84 58,76" fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
-                ) : (
-                  <path d="M46,75 Q50,77 54,75" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
-                )}
+                <circle cx="42" cy="65" r="2" fill="#333" opacity="0.4" />
+                <circle cx="58" cy="65" r="2" fill="#333" opacity="0.4" />
+                <path d="M46,75 Q50,77 54,75" fill="none" stroke="#333" strokeWidth="1" strokeLinecap="round" opacity="0.3" />
               </svg>
               
-              {/* Collected Counter - Circular Progress Style */}
               <div className="absolute -top-4 -right-4 bg-[#FFCC70] w-14 h-14 rounded-full shadow-lg flex items-center justify-center border-4 border-white font-black text-teal-900">
                 {collectedNouns.length}/4
               </div>
             </div>
-            
-            {/* Speech Bubble - Exact "Yay!" */}
-            <AnimatePresence>
-              {nounFeedback?.type === 'correct' && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.8 }}
-                  animate={{ opacity: 1, y: -50, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute -top-16 left-1/2 -translate-x-1/2 bg-white px-6 py-2 rounded-2xl shadow-xl border-2 border-pikachu text-lg font-black text-teal-900 z-50"
-                >
-                  Yay!
-                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 border-pikachu rotate-45" />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
 
-          {/* Draggable Words - Permanent removal of collected nouns */}
+          {/* Draggable Words */}
           {!isDone && (
             <div className="flex flex-wrap justify-center gap-4 max-w-2xl">
               {sessionWords.filter(word => !collectedNouns.includes(word.id)).map((word) => (
@@ -752,15 +1747,6 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
             )}
           </AnimatePresence>
         </div>
-
-        {/* Faint Background Pikachu */}
-        <div className="absolute -bottom-20 -left-20 opacity-5 pointer-events-none">
-          <svg viewBox="0 0 100 100" className="w-64 h-64">
-            <circle cx="50" cy="60" r="30" fill="#FBD743" />
-            <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
-            <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
-          </svg>
-        </div>
       </div>
     );
   }
@@ -833,153 +1819,199 @@ const InteractivePractice = ({ lessonId, onComplete, onWatchVideo, onHelp, asset
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-10 bg-[#1a1c1e] min-h-screen items-center justify-center w-full">
-      <div className="flex flex-col items-center flex-grow max-w-5xl">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8 items-start">
-          <div className="lg:col-span-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Calibration: Level {step + 1}</p>
-            <h2 className="text-4xl font-serif italic mb-2 text-white">{currentLevel.instruction}</h2>
-            {error && (
-              <div className="mt-2 text-[10px] text-amber-200 bg-white/5 p-2 rounded-lg border border-white/10 flex items-center gap-2">
-                <Sparkles size={12} className="text-amber-400" />
-                <span>AI is resting. Using classic assets.</span>
-                <button onClick={() => generate()} className="underline font-bold ml-auto hover:text-white">Retry Magic</button>
-              </div>
-            )}
-          </div>
-          <div className="lg:col-span-1">
-            <AnimatePresence mode="wait">
-              <AshMascot 
-                type={isCorrect ? 'success' : feedback ? 'warning' : 'tip'} 
-                message={feedback || "Align the character center with the target zone."} 
-                customSprite={assets.ash}
-              />
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <div 
-          ref={containerRef}
-          className="relative w-full aspect-video rounded-[50px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-[12px] border-[#2a2d30]"
-          style={{ perspective: '1000px' }}
-        >
-          <div className="absolute inset-0 z-0">
-            {assets.bg ? (
-              <img 
-                src={assets.bg} 
-                alt="Onsen Battlefield" 
-                className="w-full h-full object-cover scale-110" 
-                style={{ transform: 'translateZ(-100px)' }}
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-stone-800 flex items-center justify-center">
-                <p className="text-stone-500 font-serif italic">Background Loading...</p>
-              </div>
-            )}
-          </div>
-
-          {isDragging && (
-            <svg viewBox="0 0 800 450" className="absolute inset-0 w-full h-full pointer-events-none opacity-20 z-10">
-              <ellipse cx="450" cy="306" rx="220" ry="54" fill="cyan" />
-              <rect x="600" y="342" width="180" height="90" fill="yellow" />
-              <rect x="600" y="288" width="180" height="54" fill="orange" />
-            </svg>
-          )}
-
-          <motion.div
-            drag
-            dragConstraints={containerRef}
-            onDragStart={() => {
-              setIsDragging(true);
-              setFeedback(null);
-            }}
-            onDrag={(e, info) => updatePreposition(info.point)}
-            onDragEnd={handleDragEnd}
-            className="absolute left-10 top-1/2 -translate-y-1/2 z-20 cursor-grab active:cursor-grabbing touch-none"
-            initial={{ x: 0, y: 0 }}
-            key={step}
+    <div className="max-w-6xl w-full flex flex-col items-center relative py-10">
+      <div className="text-center mb-12">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">Interactive Practice</p>
+        <h2 className="text-5xl font-serif italic mb-8 text-white">Mastering Prepositions</h2>
+        
+        {/* Character Area - Squirtle Exclusively for Prepositions */}
+        <div className="flex justify-center mb-8">
+          <motion.div 
+            animate={isCorrect ? { 
+              scale: [1, 1.15, 1],
+              y: [0, -20, 0],
+              rotate: [0, 10, -10, 10, 0]
+            } : feedback && !isCorrect ? {
+              x: [0, -5, 5, -5, 5, 0]
+            } : {}}
+            className="relative w-64 h-64 flex items-center justify-center"
           >
-            <div className="relative">
-              <AnimatePresence>
-                {isDragging && currentPreposition && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: -50 }}
-                    exit={{ opacity: 0, scale: 0.5 }}
-                    className="absolute left-1/2 -translate-x-1/2 bg-ink text-white px-3 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <Sparkles size={10} className="text-yellow-400" />
-                    {currentPreposition}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <img 
-                src={currentLevel.sprite} 
-                alt={currentLevel.object} 
-                style={{ transform: `scale(${currentLevel.scale})` }}
-                className="w-32 h-32 object-contain drop-shadow-[0_30px_15px_rgba(0,0,0,0.4)]"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          </motion.div>
-
-          <div className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-t from-black/20 to-transparent" />
-          
-          <div className="absolute right-10 top-10 scale-110 origin-top-right pointer-events-none z-40">
-            <GrammaChu 
-              reaction={mascotReaction} 
-              message={isCorrect ? "Perfect!" : feedback ? "Try again!" : "Where should it go?"} 
-              customSprite={assets.ash}
+            <img 
+              src={LESSON_CHARACTERS.prepositions.sprite} 
+              alt={LESSON_CHARACTERS.prepositions.name} 
+              className={`w-full h-full object-contain transition-all ${feedback && !isCorrect ? 'grayscale brightness-50' : ''}`}
+              referrerPolicy="no-referrer"
             />
-          </div>
+            
+            {/* Beaming Reaction Overlays */}
+            {isCorrect && (
+              <div className="absolute inset-0 pointer-events-none">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <path d="M35,40 Q40,35 45,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M55,40 Q60,35 65,40" fill="none" stroke="#333" strokeWidth="4" strokeLinecap="round" />
+                  <circle cx="25" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                  <circle cx="75" cy="55" r="8" fill="#FFB6C1" opacity="0.8" />
+                </svg>
+              </div>
+            )}
+
+            {/* Speech Bubbles */}
+            <AnimatePresence>
+              {(isCorrect || feedback) && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: -40 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className={`absolute -top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-2xl border-2 font-black z-50 min-w-[250px] text-center ${
+                    isCorrect ? 'bg-white border-pikachu text-teal-900' : 'bg-white border-rose-400 text-rose-600'
+                  }`}
+                >
+                  {isCorrect ? "Excellent! Perfect Accuracy." : feedback}
+                  <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r-2 border-b-2 rotate-45 ${
+                    isCorrect ? 'border-pikachu' : 'border-rose-400'
+                  }`} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Star Burst */}
+            <AnimatePresence>
+              {isCorrect && (
+                <motion.div
+                  initial={{ opacity: 0, y: 0 }}
+                  animate={{ opacity: 1, y: -120 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute top-0 text-amber-500 font-black text-5xl z-50 drop-shadow-lg"
+                >
+                  +10 ⭐
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
 
-        <div className="mt-8 flex gap-4">
-          {isCorrect && (
-            <button 
-              onClick={nextStep} 
-              className="px-12 py-5 bg-teal-600 text-white font-bold rounded-2xl shadow-xl btn-plushy flex items-center gap-3"
-            >
-              {step < levels.length - 1 ? "Next Calibration" : "Proceed to Final Quiz"}
-              <ArrowRight size={20} />
-            </button>
-          )}
-          <button 
-            onClick={() => generate()}
-            className="px-6 py-5 bg-[#2a2d30] text-stone-400 font-bold rounded-2xl border border-white/5 hover:text-white transition-all flex items-center gap-2"
-          >
-            <Loader2 size={16} className={loading ? "animate-spin" : ""} />
-            Regenerate Scene
-          </button>
-        </div>
+        <p className="text-2xl text-white font-bold">
+          “{currentLevel.instruction}”
+        </p>
       </div>
 
-      <div className="w-full lg:w-80 bg-[#2a2d30] rounded-[40px] p-8 border border-white/5 shadow-2xl self-start lg:mt-24">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 bg-amber-500/20 rounded-2xl">
-            <Trophy className="text-amber-500" size={24} />
+      <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full">
+        <div className="flex flex-col items-center flex-grow max-w-5xl">
+          <div 
+            ref={containerRef}
+            className="relative w-full aspect-video rounded-[50px] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-[12px] border-[#2a2d30]"
+            style={{ perspective: '1000px' }}
+          >
+            <div className="absolute inset-0 z-0">
+              {assets.bg ? (
+                <img 
+                  src={assets.bg} 
+                  alt="Onsen Battlefield" 
+                  className="w-full h-full object-cover scale-110" 
+                  style={{ transform: 'translateZ(-100px)' }}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-stone-800 flex items-center justify-center">
+                  <p className="text-stone-500 font-serif italic">Background Loading...</p>
+                </div>
+              )}
+            </div>
+
+            {isDragging && (
+              <svg viewBox="0 0 800 450" className="absolute inset-0 w-full h-full pointer-events-none opacity-20 z-10">
+                <ellipse cx="450" cy="306" rx="220" ry="54" fill="cyan" />
+                <rect x="600" y="342" width="180" height="90" fill="yellow" />
+                <rect x="600" y="288" width="180" height="54" fill="orange" />
+              </svg>
+            )}
+
+            <motion.div
+              drag
+              dragConstraints={containerRef}
+              onDragStart={() => {
+                setIsDragging(true);
+                setFeedback(null);
+              }}
+              onDrag={(e, info) => updatePreposition(info.point)}
+              onDragEnd={handleDragEnd}
+              className="absolute left-10 top-1/2 -translate-y-1/2 z-20 cursor-grab active:cursor-grabbing touch-none"
+              initial={{ x: 0, y: 0 }}
+              key={step}
+            >
+              <div className="relative">
+                <AnimatePresence>
+                  {isDragging && currentPreposition && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: -50 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="absolute left-1/2 -translate-x-1/2 bg-ink text-white px-3 py-1 rounded text-[10px] font-bold uppercase flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <Sparkles size={10} className="text-yellow-400" />
+                      {currentPreposition}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <img 
+                  src={currentLevel.sprite} 
+                  alt={currentLevel.object} 
+                  style={{ transform: `scale(${currentLevel.scale})` }}
+                  className="w-32 h-32 object-contain drop-shadow-[0_30px_15px_rgba(0,0,0,0.4)]"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </motion.div>
+
+            <div className="absolute inset-0 pointer-events-none z-30 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
-          <h3 className="text-white font-black text-lg tracking-tight">TEAM RANKINGS</h3>
+
+          <div className="mt-8 flex gap-4">
+            {isCorrect && (
+              <button 
+                onClick={nextStep} 
+                className="px-12 py-5 bg-teal-600 text-white font-bold rounded-2xl shadow-xl btn-plushy flex items-center gap-3"
+              >
+                {step < levels.length - 1 ? "Next Calibration" : "Proceed to Final Quiz"}
+                <ArrowRight size={20} />
+              </button>
+            )}
+            <button 
+              onClick={() => generate()}
+              className="px-6 py-5 bg-[#2a2d30] text-stone-400 font-bold rounded-2xl border border-white/5 hover:text-white transition-all flex items-center gap-2"
+            >
+              <Loader2 size={16} className={loading ? "animate-spin" : ""} />
+              Regenerate Scene
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {leaderboard.map((p, i) => (
-            <div key={p.name} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-              <div className="flex items-center gap-3">
-                {i === 0 ? <Crown size={16} className="text-amber-400" /> : <Star size={16} className="text-stone-500" />}
-                <span className="text-sm font-bold text-stone-200">{p.name}</span>
-              </div>
-              <span className="text-xs font-black text-amber-500">{p.xp} XP</span>
+        <div className="w-full lg:w-80 bg-[#2a2d30] rounded-[40px] p-8 border border-white/5 shadow-2xl self-start lg:mt-24">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-3 bg-amber-500/20 rounded-2xl">
+              <Trophy className="text-amber-500" size={24} />
             </div>
-          ))}
+            <h3 className="text-white font-black text-lg tracking-tight">TEAM RANKINGS</h3>
+          </div>
+
+          <div className="space-y-3">
+            {leaderboard.map((p, i) => (
+              <div key={p.name} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  {i === 0 ? <Crown size={16} className="text-amber-400" /> : <Star size={16} className="text-stone-500" />}
+                  <span className="text-sm font-bold text-stone-200">{p.name}</span>
+                </div>
+                <span className="text-xs font-black text-amber-500">{p.xp} XP</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-const QuizPage = ({ lessonId, isSimpler = false, onComplete }: { lessonId: string, isSimpler?: boolean, onComplete: (score: number) => void }) => {
+const QuizPage = ({ lessonId, isSimpler = false, onComplete, onNextModule, onBack }: { lessonId: string, isSimpler?: boolean, onComplete: (score: number) => void, onNextModule?: () => void, onBack?: () => void }) => {
   const questions = (isSimpler ? SIMPLER_QUIZ_DATA[lessonId] : QUIZ_DATA[lessonId]) || [];
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -1043,6 +2075,7 @@ const QuizPage = ({ lessonId, isSimpler = false, onComplete }: { lessonId: strin
     const percentage = (score / questions.length) * 100;
     const threshold = isSimpler ? 75 : 70;
     const passed = percentage >= threshold;
+    const canJumpToNext = isSimpler && percentage >= 50; // ← UPDATED 2026: New condition for jumping to next module
 
     return (
       <motion.div 
@@ -1068,22 +2101,42 @@ const QuizPage = ({ lessonId, isSimpler = false, onComplete }: { lessonId: strin
 
         <div className="space-y-3">
           {passed ? (
-            <button 
-              onClick={() => onComplete(percentage)}
-              className="w-full bg-ink text-white font-bold py-5 rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 btn-plushy"
-            >
-              {isSimpler ? "Return to Main Quiz" : "Finish Module"}
-              <CheckCircle2 size={18} />
-            </button>
+            <>
+              <button 
+                onClick={() => onComplete(percentage)}
+                className="w-full bg-ink text-white font-bold py-5 rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 btn-plushy"
+              >
+                Return to Main Quiz
+                <CheckCircle2 size={18} />
+              </button>
+              {onNextModule && (
+                <button 
+                  onClick={onNextModule}
+                  className="w-full bg-ink text-white font-bold py-5 rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 btn-plushy"
+                >
+                  Jump to Next Module
+                  <ArrowRight size={18} />
+                </button>
+              )}
+            </>
           ) : (
             <>
               <button 
                 onClick={() => onComplete(percentage)}
-                className="w-full bg-primary text-white font-bold py-5 rounded-2xl hover:bg-blue-600 transition-all flex items-center justify-center gap-3 btn-plushy"
+                className={`w-full ${isSimpler ? 'bg-ink hover:bg-stone-800' : 'bg-primary hover:bg-blue-600'} text-white font-bold py-5 rounded-2xl transition-all flex items-center justify-center gap-3 btn-plushy`}
               >
-                {isSimpler ? "Watch Videos" : "Try Simpler Quiz"}
+                {isSimpler ? "Return to Main Quiz" : "Try Simpler Quiz"}
                 <ArrowRight size={18} />
               </button>
+              {canJumpToNext && onNextModule && (
+                <button 
+                  onClick={onNextModule}
+                  className="w-full bg-ink text-white font-bold py-5 rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 btn-plushy"
+                >
+                  Jump to Next Module
+                  <ArrowRight size={18} />
+                </button>
+              )}
               {!isSimpler && (
                 <button 
                   onClick={() => onComplete(-1)} // Special code for "Watch Videos" from main quiz
@@ -1105,16 +2158,26 @@ const QuizPage = ({ lessonId, isSimpler = false, onComplete }: { lessonId: strin
   return (
     <div className="max-w-2xl w-full">
       <div className="mb-8 flex justify-between items-end">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
-            {isSimpler ? "Practice Question" : "Question"} {currentQuestionIdx + 1} of {questions.length}
-          </p>
-          <h2 className="text-3xl font-serif italic">
-            {currentQuestion.type === 'match' ? 'Match the Following' : 
-             currentQuestion.type === 'true-false' ? 'True or False?' :
-             currentQuestion.type === 'fill-in-blank' ? 'Fill in the Blank' :
-             isSimpler ? "Let's Practice!" : "Test your knowledge"}
-          </h2>
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="p-3 bg-white rounded-2xl shadow-sm border border-stone-100 text-ink hover:bg-stone-50 transition-all active:scale-95"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1">
+              {isSimpler ? "Practice Question" : "Question"} {currentQuestionIdx + 1} of {questions.length}
+            </p>
+            <h2 className="text-3xl font-serif italic">
+              {currentQuestion.type === 'match' ? 'Match the Following' : 
+               currentQuestion.type === 'true-false' ? 'True or False?' :
+               currentQuestion.type === 'fill-in-blank' ? 'Fill in the Blank' :
+               isSimpler ? "Let's Practice!" : "Test your knowledge"}
+            </h2>
+          </div>
         </div>
         <div className="w-32 h-2 bg-stone-100 rounded-full overflow-hidden">
           <motion.div 
@@ -1269,40 +2332,35 @@ const VideoPage = ({ lessonId, onDone }: { lessonId: string, onDone: () => void 
 };
 
 const ChooseActionPage = ({ lessonId, onWatchVideo, onStartQuiz, onStartPractice, onBack }: { lessonId: string, onWatchVideo: () => void, onStartQuiz: () => void, onStartPractice: () => void, onBack: () => void }) => {
+  const lessonChar = LESSON_CHARACTERS[lessonId] || LESSON_CHARACTERS.nouns;
+  
   return (
     <div className="max-w-4xl w-full text-center relative">
-      <button 
-        onClick={onBack}
-        className="absolute top-0 left-0 -translate-y-12 p-3 text-[#202124] hover:bg-stone-200/50 rounded-full transition-all group"
-      >
-        <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" />
-      </button>
-
-      <GrammaChu reaction="surprised" message="What's next?" />
-      <h1 className="text-5xl font-serif italic mb-6">Choose Your Path</h1>
-      <p className="text-lg text-muted font-medium mb-12">Are you ready to test your skills, or would you like to practice first?</p>
+      <div className="flex items-center justify-center gap-8 mb-12 relative">
+        {/* Left Character - Lesson Specific */}
+        <motion.img 
+          initial={{ x: -30, opacity: 0, rotate: -10 }}
+          animate={{ x: 0, opacity: 1, rotate: 0 }}
+          src={lessonChar.sprite} 
+          alt={lessonChar.name} 
+          className="w-40 h-40 object-contain drop-shadow-xl"
+          referrerPolicy="no-referrer"
+        />
+        
+        <div className="text-left">
+          <h1 className="text-5xl font-serif italic mb-2">Choose Your Path {lessonChar.emoji}</h1>
+          <p className="text-lg text-muted font-medium">Are you ready to test your skills, or would you like to practice first?</p>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <button 
           onClick={onStartPractice}
-          className="p-10 bg-white rounded-[40px] shadow-xl border border-stone-50 hover:border-orange-200 transition-all group text-left btn-plushy"
+          className="p-10 bg-white rounded-[40px] shadow-xl border-2 transition-all group text-left btn-plushy"
+          style={{ borderColor: `${lessonChar.color}40` }}
         >
-          <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-orange-100 transition-colors">
-            <div className="relative">
-              <svg viewBox="0 0 100 100" className="w-12 h-12">
-                {/* Pikachu Head */}
-                <circle cx="50" cy="60" r="30" fill="#FBD743" />
-                <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
-                <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
-                {/* Knot/Towel */}
-                <rect x="35" y="32" width="30" height="10" rx="5" fill="white" stroke="#E5E7EB" strokeWidth="1" />
-                {/* Eyes & Cheeks */}
-                <circle cx="40" cy="58" r="3" fill="#333" />
-                <circle cx="60" cy="58" r="3" fill="#333" />
-                <circle cx="30" cy="68" r="5" fill="#FF0000" opacity="0.6" />
-                <circle cx="70" cy="68" r="5" fill="#FF0000" opacity="0.6" />
-              </svg>
-            </div>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${lessonChar.color}20` }}>
+            <div className="text-3xl">{lessonChar.emoji}</div>
           </div>
           <h3 className="text-2xl font-serif italic mb-2">Let's Practice</h3>
           <p className="text-sm text-muted font-medium">
@@ -1350,7 +2408,7 @@ const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string,
   if (!content) return null;
 
   const steps = [
-    { title: "The Concept", content: content.body, reaction: 'thinking' as const, ash: "Every great Trainer starts with the basics!" },
+    { title: "The Concept", content: content.body, reaction: 'thinking' as const, ash: "Every great student starts with the basics!" },
     { title: "Examples", content: "Let's look at how we use this in real sentences.", reaction: 'happy' as const, ash: "Check out these examples! They're like battle moves for your brain." },
     { title: "Ready for Battle?", content: "You've learned the core ideas. Now it's time to test your skills!", reaction: 'excited' as const, ash: "I choose you! Let's show them what you've learned." }
   ];
@@ -1379,13 +2437,6 @@ const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string,
 
   return (
     <div className="max-w-5xl w-full relative">
-      <button 
-        onClick={handleBack}
-        className="absolute top-0 left-0 -translate-y-12 p-3 text-[#202124] hover:bg-stone-200/50 rounded-full transition-all group z-30"
-      >
-        <ChevronLeft size={32} className="group-hover:-translate-x-1 transition-transform" />
-      </button>
-
       <div className="mb-12 flex justify-end">
         <AshMascot message={steps[step].ash} type={step === 1 ? 'tip' : 'default'} />
       </div>
@@ -1527,208 +2578,399 @@ const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string,
 
 const LoginPage = ({ assets }: { assets: any }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [showAuth, setShowAuth] = useState(false);
+  const [showAuthOptions, setShowAuthOptions] = useState(false); // ← UPDATED 2026: New state for auth options overlay
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [className, setClassName] = useState('Class 2');
   const login = useStore((state) => state.login);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const displayName = mode === 'register' ? name : email.split('@')[0];
     if (displayName.trim()) {
-      login(displayName, 'Class 2');
+      login(displayName, className);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#fdf6e3] relative overflow-hidden flex items-center justify-center p-6">
-      {/* Onsen Background */}
-      {assets.bg ? (
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={assets.bg} 
-            alt="Background" 
-            className="w-full h-full object-cover opacity-40"
-            referrerPolicy="no-referrer"
+    <div className="min-h-screen w-full bg-white relative overflow-x-hidden flex flex-col">
+      {/* Magical Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.1, 0.2, 0.1],
+            rotate: [0, 90, 0]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-gradient-to-br from-blue-400 to-teal-400 rounded-full blur-[120px]"
+        />
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.3, 1],
+            opacity: [0.1, 0.15, 0.1],
+            rotate: [0, -90, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-[120px]"
+        />
+        
+        {/* Floating Particles */}
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ 
+              x: Math.random() * 100 + "%", 
+              y: Math.random() * 100 + "%",
+              opacity: 0 
+            }}
+            animate={{ 
+              y: [null, "-20%"],
+              opacity: [0, 0.5, 0],
+              scale: [0, 1, 0]
+            }}
+            transition={{ 
+              duration: Math.random() * 5 + 5, 
+              repeat: Infinity,
+              delay: Math.random() * 5
+            }}
+            className="absolute w-2 h-2 bg-blue-300 rounded-full blur-sm"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-teal-100/30 to-white/60" />
-        </div>
-      ) : (
-        <div className="absolute inset-0 bg-gradient-to-b from-teal-100/20 to-teal-500/5 pointer-events-none" />
-      )}
-
-      {/* Floating Pikachu in Top-Right */}
-      <div className="absolute top-12 right-12 z-20 hidden md:block">
-        <motion.div
-          animate={{ y: [0, -15, 0], rotate: [0, 5, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <GrammaChu reaction="happy" />
-        </motion.div>
+        ))}
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-[#FFF6E5] p-10 rounded-[48px] shadow-2xl border-[6px] border-[#D4C3A3]/30 relative z-10"
-      >
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-white/50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner border border-white/40">
-            <GraduationCap size={40} className="text-teal-700" />
-          </div>
-          <h1 className="text-4xl font-serif italic mb-2 text-teal-900">GrammarPal</h1>
-          <p className="text-stone-600 font-medium text-sm">Your magical journey to mastery begins.</p>
+      {/* Main Content */}
+      <main className="flex-grow flex flex-col items-center justify-center pt-24 pb-12 px-6 relative">
+        {/* Background Elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none text-stone-100">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-100/30 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-100/30 rounded-full blur-[120px]" />
         </div>
 
-        {/* Tabs */}
-        <div className="flex p-1.5 bg-stone-200/50 rounded-2xl mb-8">
-          <button 
-            onClick={() => setMode('login')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'login' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
-          >
-            Login
-          </button>
-          <button 
-            onClick={() => setMode('register')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${mode === 'register' ? 'bg-white text-teal-800 shadow-sm' : 'text-stone-500 hover:text-stone-700'}`}
-          >
-            Register
-          </button>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <AnimatePresence mode="wait">
-            {mode === 'register' && (
-              <motion.div
-                key="name"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="text-left overflow-hidden"
+        <AnimatePresence mode="wait">
+          {!showAuth ? (
+            <motion.div 
+              key="hero"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="max-w-4xl w-full text-center z-10 flex flex-col items-center"
+            >
+              <div className="w-32 h-32 bg-teal-50 rounded-[40px] flex items-center justify-center mb-8 shadow-xl shadow-teal-100/50 border-2 border-white relative">
+                <GraduationCap size={64} className="text-teal-600" />
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-2 -right-2 w-8 h-8 bg-orange-400 rounded-full border-4 border-white shadow-sm"
+                />
+              </div>
+
+              <h1 className="text-7xl md:text-8xl font-serif italic mb-6 text-teal-900 tracking-tight leading-none">
+                GrammarPal
+              </h1>
+              
+              <p className="text-2xl md:text-3xl font-medium text-stone-600 mb-16 max-w-2xl">
+                Master Grammar with <span className="text-teal-600 font-bold italic">Fun Battles!</span>
+              </p>
+
+              <div className="relative mb-16 mt-12">
+                <motion.div
+                  animate={{ y: [0, -20, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative z-10"
+                >
+                  <GrammaChu reaction="happy" />
+                </motion.div>
+                {/* Decorative Rings */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-dashed border-teal-200 rounded-full animate-[spin_20s_linear_infinite]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 border border-stone-100 rounded-full" />
+              </div>
+
+              <button 
+                onClick={() => setShowAuthOptions(true)} // ← UPDATED 2026: Show options overlay instead of direct register
+                className="group relative px-12 py-6 bg-[#FFCC70] text-teal-900 font-black text-xl rounded-3xl shadow-2xl shadow-orange-200 hover:bg-[#ffd68a] hover:-translate-y-1 transition-all flex items-center gap-4 active:scale-95"
               >
-                <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Trainer Name</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
-                  <input 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
-                    placeholder="What should we call you?"
-                    required={mode === 'register'}
-                  />
+                Start Your Adventure
+                <ArrowRight size={24} className="group-hover:translate-x-2 transition-transform" />
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="auth"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-white p-10 rounded-[48px] shadow-2xl border-2 border-stone-50 relative z-10"
+            >
+              <button 
+                onClick={() => setShowAuth(false)}
+                className="absolute top-6 left-6 p-2 text-stone-400 hover:text-stone-600 transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-serif italic mb-2 text-teal-900">
+                  {mode === 'login' ? 'Welcome Back!' : 'Join the Adventure'}
+                </h2>
+                <p className="text-stone-500 font-medium text-sm">
+                  {mode === 'login' ? 'Continue your journey to mastery.' : 'Create your account to start learning.'}
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <AnimatePresence mode="wait">
+                  {mode === 'register' && (
+                    <div className="space-y-5">
+                      <motion.div
+                        key="name"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-left overflow-hidden"
+                      >
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">What should we call you?</label>
+                        <div className="relative">
+                          <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                          <input 
+                            type="text" 
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink"
+                            placeholder="Enter your name"
+                            required={mode === 'register'}
+                          />
+                        </div>
+                      </motion.div>
+
+                      <motion.div
+                        key="class"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-left overflow-hidden"
+                      >
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Class 🏫</label>
+                        <div className="relative">
+                          <GraduationCap size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                          <select 
+                            value={className}
+                            onChange={(e) => setClassName(e.target.value)}
+                            className="w-full pl-14 pr-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink appearance-none cursor-pointer"
+                            required={mode === 'register'}
+                          >
+                            <option value="Class 1">Class 1</option>
+                            <option value="Class 2">Class 2</option>
+                            <option value="Class 3">Class 3</option>
+                            <option value="Class 4">Class 4</option>
+                            <option value="Class 5">Class 5</option>
+                          </select>
+                          <ChevronDown size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-5">
+                  <div className="text-left">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Email Address</label>
+                    <div className="relative">
+                      <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full pl-14 pr-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink"
+                        placeholder="your@email.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-left">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Secret Password</label>
+                    <div className="relative">
+                      <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input 
+                        type="password" 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full pl-14 pr-6 py-4 rounded-2xl bg-stone-50 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink"
+                        placeholder="••••••••"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-[#FFCC70] text-teal-900 font-black py-5 rounded-2xl shadow-lg hover:bg-[#ffd68a] transition-all flex items-center justify-center gap-2 group btn-plushy mt-4"
+                >
+                  {mode === 'login' ? 'Continue Journey' : 'Begin Adventure'}
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-stone-300/50"></div>
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold text-stone-400">
+                    <span className="bg-white px-4">Or sign in with</span>
+                  </div>
+                </div>
+
+                <button 
+                  type="button"
+                  className="w-full bg-white border border-stone-200 text-stone-600 font-bold py-4 rounded-2xl hover:bg-stone-50 transition-all flex items-center justify-center gap-3 shadow-sm btn-plushy"
+                >
+                  <svg viewBox="0 0 24 24" className="w-5 h-5">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Google
+                </button>
+              </form>
+
+              <p className="mt-8 text-sm text-stone-500 font-medium text-center">
+                {mode === 'login' ? "New to GrammarPal? " : "Already have an account? "}
+                <button 
+                  onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                  className="text-teal-700 font-bold hover:underline"
+                >
+                  {mode === 'login' ? "Register here" : "Login here"}
+                </button>
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Auth Options Overlay ← UPDATED 2026 */}
+        <AnimatePresence>
+          {showAuthOptions && !showAuth && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] bg-white/80 backdrop-blur-md flex items-center justify-center p-6"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 max-w-sm w-full text-center space-y-8"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-serif italic text-teal-900">Choose Your Path</h3>
+                  <p className="text-stone-500 font-medium">Ready to start your grammar journey?</p>
+                </div>
+                
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => { setMode('login'); setShowAuth(true); setShowAuthOptions(false); }}
+                    className="w-full py-5 rounded-2xl bg-white border-2 border-teal-600/20 text-teal-900 font-bold hover:bg-teal-50 hover:scale-[1.02] transition-all shadow-sm flex items-center justify-center gap-3 group"
+                  >
+                    <Sparkles size={20} className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    Login
+                    <Sparkles size={20} className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                  <button 
+                    onClick={() => { setMode('register'); setShowAuth(true); setShowAuthOptions(false); }}
+                    className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 hover:scale-[1.02] transition-all shadow-lg flex items-center justify-center gap-3 group"
+                  >
+                    <Sparkles size={20} className="text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    Sign Up
+                    <Sparkles size={20} className="text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setShowAuthOptions(false)}
+                  className="text-stone-400 font-bold hover:text-stone-600 transition-colors text-sm"
+                >
+                  Maybe later
+                </button>
               </motion.div>
-            )}
-          </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
-          <div className="text-left">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Email Address</label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input 
-                type="email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
-                placeholder="trainer@pal.com"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="text-left">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-stone-500 ml-1 mb-2 block">Password</label>
-            <div className="relative">
-              <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 rounded-2xl bg-white/80 border-2 border-transparent focus:border-teal-600/20 focus:bg-white transition-all outline-none font-medium text-ink shadow-sm"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-          
-          <button 
-            type="submit"
-            className="w-full bg-[#FFCC70] text-teal-900 font-black py-5 rounded-2xl shadow-lg hover:bg-[#ffd68a] transition-all flex items-center justify-center gap-2 group btn-plushy mt-4"
-          >
-            {mode === 'login' ? 'Continue Journey' : 'Begin Adventure'}
-            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </button>
-
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-stone-300/50"></div>
-            </div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold text-stone-400">
-              <span className="bg-[#FFF6E5] px-4">Or sign in with</span>
-            </div>
-          </div>
-
-          <button 
-            type="button"
-            className="w-full bg-white border border-stone-200 text-stone-600 font-bold py-4 rounded-2xl hover:bg-stone-50 transition-all flex items-center justify-center gap-3 shadow-sm btn-plushy"
-          >
-            <svg viewBox="0 0 24 24" className="w-5 h-5">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Google
-          </button>
-        </form>
-
-        <p className="mt-8 text-sm text-stone-500 font-medium text-center">
-          {mode === 'login' ? "New Trainer? " : "Already a Trainer? "}
-          <button 
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-            className="text-teal-700 font-bold hover:underline"
-          >
-            {mode === 'login' ? "Register here" : "Login here"}
-          </button>
-        </p>
-      </motion.div>
+      {/* Footer */}
+      <footer className="p-8 text-center text-stone-400 text-[10px] font-bold uppercase tracking-[0.2em] z-10">
+        © 2026 GrammarPal Educational Adventures
+      </footer>
     </div>
   );
 };
 
-const Navbar = ({ user, onLogout, onBack, showBack }: { user: any, onLogout: () => void, onBack?: () => void, showBack?: boolean }) => {
+const Navbar = ({ user, onLogout, onBack, showBack, onHelp }: { user: any, onLogout: () => void, onBack?: () => void, showBack?: boolean, onHelp?: () => void }) => {
   return (
-    <nav className="px-8 py-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-      <div className="flex items-center gap-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-ink rounded-xl flex items-center justify-center">
-            <GraduationCap size={20} className="text-white" />
+    <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-stone-100">
+      <div className="px-8 py-4 flex justify-between items-center max-w-7xl mx-auto w-full">
+        <div className="flex items-center gap-4 sm:gap-8">
+          {/* Back Arrow - FIXED OVERLAP */}
+          {showBack && onBack && (
+            <motion.button 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={onBack}
+              className="p-2.5 rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200 transition-all shadow-sm active:scale-95"
+              title="Back"
+            >
+              <ChevronLeft size={20} />
+            </motion.button>
+          )}
+          
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-ink rounded-xl flex items-center justify-center shadow-lg shadow-stone-200">
+              <GraduationCap size={18} className="text-white" />
+            </div>
+            <span className="font-serif text-xl sm:text-2xl italic tracking-tight text-teal-900">GrammarPal</span>
           </div>
-          <span className="font-serif text-2xl italic tracking-tight">GrammarPal</span>
+
+          {showBack && onBack && (
+            <button 
+              onClick={onBack}
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-stone-100 shadow-sm hover:bg-stone-50 transition-all text-muted hover:text-ink font-bold text-[10px] uppercase tracking-widest btn-plushy"
+            >
+              Back to Dashboard
+            </button>
+          )}
         </div>
-        {showBack && onBack && (
-          <motion.button 
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-stone-100 shadow-sm hover:bg-stone-50 transition-all text-muted hover:text-ink font-bold text-[10px] uppercase tracking-widest btn-plushy"
+
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="text-right hidden sm:block">
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">{user?.class}</p>
+            <p className="font-serif text-lg italic text-teal-900 leading-none">{user?.username}</p>
+          </div>
+
+          {/* NEED HELP? Leaf - FIXED 2026 */}
+          <button 
+            onClick={onHelp}
+            className="flex flex-col items-center gap-1 group active:scale-95"
           >
-            <ChevronLeft size={14} /> Back to Dashboard
-          </motion.button>
-        )}
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="text-right hidden sm:block">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted">{user?.class}</p>
-          <p className="font-serif text-lg italic">{user?.username}</p>
+            <div className="p-2.5 bg-[#A7D8F0] text-white rounded-full shadow-md hover:shadow-[#A7D8F0]/40 transition-all">
+              <Leaf size={20} className="fill-current" />
+            </div>
+            <span className="text-[9px] font-black text-teal-800 uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">
+              Need Help?
+            </span>
+          </button>
+
+          <button 
+            onClick={onLogout}
+            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-100 transition-colors text-muted hover:text-rose-500"
+            title="Logout"
+          >
+            <LogOut size={18} />
+          </button>
         </div>
-        <button 
-          onClick={onLogout}
-          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-100 transition-colors text-muted"
-        >
-          <LogOut size={18} />
-        </button>
       </div>
     </nav>
   );
@@ -1880,7 +3122,7 @@ const HomeScreen = ({ assets, loading, error, onRetry, onSelectLesson }: { asset
   ];
 
   return (
-    <main className="min-h-screen w-full bg-[#fdf6e3] relative overflow-hidden flex flex-col">
+    <main className="min-h-screen w-full bg-[#fdf6e3] relative overflow-hidden flex flex-col pt-28"> {/* ← UPDATED 2026: pt-28 for fixed Navbar */}
       {/* Onsen Background */}
       {assets.bg ? (
         <div className="absolute inset-0 z-0">
@@ -1896,15 +3138,15 @@ const HomeScreen = ({ assets, loading, error, onRetry, onSelectLesson }: { asset
         <div className="absolute inset-0 bg-gradient-to-b from-teal-100/30 to-teal-500/10 pointer-events-none" />
       )}
       
-      <div className="relative z-20 max-w-7xl mx-auto px-8 py-12 w-full flex-grow flex flex-col">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
+      <div className="relative z-20 max-w-7xl mx-auto px-8 py-8 w-full flex-grow flex flex-col"> {/* ← UPDATED 2026: Reduced py-12 to py-8 */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12"> {/* ← UPDATED 2026: Reduced mb-16 to mb-12 */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
           >
             <h2 className="text-5xl font-serif italic mb-2 leading-tight">
               Welcome back, <br />
-              <span className="text-teal-800 not-italic font-sans font-extrabold tracking-tighter">Scholar {user?.username}</span>
+              <span className="text-teal-800 not-italic font-sans font-extrabold tracking-tighter">{user?.username}</span>
             </h2>
             <p className="text-stone-600 font-medium">Your journey to linguistic mastery continues.</p>
           </motion.div>
@@ -2057,26 +3299,19 @@ const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
             <div className="absolute inset-0 border-[12px] border-[#C89B6D]/10 pointer-events-none rounded-[24px]" />
             
             {/* Header */}
-            <div className="p-8 flex justify-between items-center bg-white/50 border-b border-[#C89B6D]/10">
+            <div className="p-8 flex justify-between items-center bg-white/50 border-b border-[#C89B6D]/10 relative">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-pikachu/20 rounded-full flex items-center justify-center">
-                  <svg viewBox="0 0 100 100" className="w-8 h-8">
-                    <circle cx="50" cy="60" r="30" fill="#FBD743" />
-                    <path d="M30 40 L20 10 L40 30 Z" fill="#FBD743" />
-                    <path d="M70 40 L80 10 L60 30 Z" fill="#FBD743" />
-                    <circle cx="40" cy="58" r="3" fill="#333" />
-                    <circle cx="60" cy="58" r="3" fill="#333" />
-                    <circle cx="30" cy="68" r="5" fill="#FF0000" opacity="0.6" />
-                    <circle cx="70" cy="68" r="5" fill="#FF0000" opacity="0.6" />
-                  </svg>
+                  <Leaf size={24} className="text-[#A7D8F0]" />
                 </div>
-                <h2 className="text-2xl font-serif italic text-[#202124]">Need Help, Trainer?</h2>
+                <h2 className="text-2xl font-serif italic text-[#202124]">Need Help?</h2>
               </div>
               <button 
                 onClick={onClose}
-                className="p-2 hover:bg-stone-200 rounded-full transition-colors"
+                className="absolute -top-4 -right-4 w-12 h-12 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 hover:scale-110 transition-all flex items-center justify-center z-50 border-4 border-white"
+                aria-label="Close"
               >
-                <X size={24} className="text-muted" />
+                <X size={24} strokeWidth={3} />
               </button>
             </div>
 
@@ -2112,6 +3347,8 @@ const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
 
 // --- Main App ---
 
+const MODULE_ORDER = ['nouns', 'verbs', 'articles', 'prepositions', 'pronouns', 'adjectives']; // ← UPDATED 2026: Defined module sequence
+
 export default function App() {
   const user = useStore((state) => state.user);
   const logout = useStore((state) => state.logout);
@@ -2120,6 +3357,7 @@ export default function App() {
   const [view, setView] = useState<'lesson' | 'choose_action' | 'video' | 'quiz' | 'simpler_quiz' | 'practice'>('lesson');
   const [navigationHistory, setNavigationHistory] = useState<{ view: string, lesson: string }[]>([]);
   const { assets, loading, error, generate } = useAssets();
+  const [isCourseComplete, setIsCourseComplete] = useState(false); // ← UPDATED 2026: New state for course completion
 
   const setScore = useStore((state) => state.setScore);
 
@@ -2188,11 +3426,11 @@ export default function App() {
   };
 
   const handleLessonBack = () => {
-    setView('choose_action');
+    setLesson('');
+    setView('lesson');
   };
 
   const handleChooseActionBack = () => {
-    setLesson('');
     setView('lesson');
   };
 
@@ -2216,58 +3454,63 @@ export default function App() {
     }
   };
 
+  const handleNextModule = () => {
+    const currentIndex = MODULE_ORDER.indexOf(currentLesson || '');
+    if (currentIndex !== -1 && currentIndex < MODULE_ORDER.length - 1) {
+      const nextLesson = MODULE_ORDER[currentIndex + 1];
+      setLesson(nextLesson);
+      setView('lesson');
+    } else if (currentIndex === MODULE_ORDER.length - 1) {
+      setIsCourseComplete(true);
+      setLesson('');
+      setView('lesson');
+    } else {
+      setLesson('');
+      setView('lesson');
+    }
+  };
+
   return (
     <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain relative">
-      {/* Persistent Back Button */}
-      <AnimatePresence>
-        {(!!currentLesson || isHelpModalOpen) && user?.isLoggedIn && (
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            onClick={handleGlobalBack}
-            className="fixed top-12 left-10 z-[110] p-3 bg-white/90 backdrop-blur-md rounded-full shadow-sm border border-stone-200 text-[#202124] hover:scale-110 transition-all group"
-            title="Go Back"
-          >
-            <ChevronLeft size={24} />
-            {/* Subtle Glow */}
-            <div className="absolute inset-0 rounded-full bg-[#202124]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* Persistent Help Button */}
-      <button 
-        onClick={() => setIsHelpModalOpen(true)}
-        className="fixed top-14 right-10 z-50 flex flex-col items-center gap-1 group"
-      >
-        <div className="p-3 bg-[#A7D8F0] text-white rounded-full shadow-lg hover:scale-110 hover:shadow-[#A7D8F0]/30 transition-all">
-          <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          >
-            <Leaf size={24} className="fill-current" />
-          </motion.div>
-        </div>
-        <span className="text-[10px] font-bold text-[#202124] uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">
-          Need Help?
-        </span>
-      </button>
-
       <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
 
       {user?.isLoggedIn && (
         <Navbar 
           user={user} 
           onLogout={logout} 
-          onBack={handleBackToDashboard} 
-          showBack={!!currentLesson} 
+          onBack={handleGlobalBack} // ← UPDATED 2026: Use handleGlobalBack for consistent arrow behavior
+          showBack={!!currentLesson || isHelpModalOpen} // ← UPDATED 2026: Show when lesson or help is active
+          onHelp={() => setIsHelpModalOpen(true)} // ← UPDATED 2026: Pass help handler
         />
       )}
       <AnimatePresence mode="wait">
         {!user?.isLoggedIn ? (
           <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <LoginPage assets={assets} />
+          </motion.div>
+        ) : isCourseComplete ? ( // ← UPDATED 2026: Show course complete screen
+          <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-8 w-full pt-28 text-center">
+            <div className="max-w-md bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 space-y-8">
+              <div className="w-32 h-32 bg-teal-50 rounded-[40px] flex items-center justify-center mx-auto shadow-xl shadow-teal-100/50 border-2 border-white relative">
+                <Trophy size={64} className="text-teal-600" />
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-2 -right-2 w-8 h-8 bg-orange-400 rounded-full border-4 border-white shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-4xl font-serif italic text-teal-900">All Done! Great Job!</h2>
+                <p className="text-stone-500 font-medium">You've mastered all the modules in GrammarPal. You're a true Grammar Master now!</p>
+              </div>
+              <button 
+                onClick={() => setIsCourseComplete(false)}
+                className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-3 group btn-plushy"
+              >
+                Back to Dashboard
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </motion.div>
         ) : !currentLesson ? (
           <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
@@ -2278,7 +3521,7 @@ export default function App() {
               onRetry={generate} 
               onSelectLesson={(id) => {
                 setLesson(id);
-                setView('choose_action');
+                setView('lesson');
               }}
             />
           </motion.div>
@@ -2288,7 +3531,7 @@ export default function App() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center p-8 w-full"
+            className="flex flex-col items-center justify-center p-8 w-full pt-28" // ← UPDATED 2026: pt-28 for fixed Navbar
           >
             {view === 'lesson' && (
               <LessonContentPage 
@@ -2331,6 +3574,8 @@ export default function App() {
               <QuizPage 
                 lessonId={currentLesson} 
                 onComplete={handleQuizComplete} 
+                onNextModule={handleNextModule}
+                onBack={handleGlobalBack}
               />
             )}
             {view === 'simpler_quiz' && (
@@ -2338,6 +3583,8 @@ export default function App() {
                 lessonId={currentLesson} 
                 isSimpler={true}
                 onComplete={handleSimplerQuizComplete} 
+                onNextModule={handleNextModule}
+                onBack={handleGlobalBack}
               />
             )}
           </motion.div>
