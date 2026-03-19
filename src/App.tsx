@@ -2075,6 +2075,7 @@ const QuizPage = ({ lessonId, isSimpler = false, onComplete, onNextModule, onBac
     const percentage = (score / questions.length) * 100;
     const threshold = isSimpler ? 75 : 70;
     const passed = percentage >= threshold;
+    const canJumpToNext = isSimpler && percentage >= 50; // ← UPDATED 2026: New condition for jumping to next module
 
     return (
       <motion.div 
@@ -2127,6 +2128,15 @@ const QuizPage = ({ lessonId, isSimpler = false, onComplete, onNextModule, onBac
                 {isSimpler ? "Return to Main Quiz" : "Try Simpler Quiz"}
                 <ArrowRight size={18} />
               </button>
+              {canJumpToNext && onNextModule && (
+                <button 
+                  onClick={onNextModule}
+                  className="w-full bg-ink text-white font-bold py-5 rounded-2xl hover:bg-stone-800 transition-all flex items-center justify-center gap-3 btn-plushy"
+                >
+                  Jump to Next Module
+                  <ArrowRight size={18} />
+                </button>
+              )}
               {!isSimpler && (
                 <button 
                   onClick={() => onComplete(-1)} // Special code for "Watch Videos" from main quiz
@@ -2569,6 +2579,7 @@ const LessonContentPage = ({ lessonId, onContinue, onBack }: { lessonId: string,
 const LoginPage = ({ assets }: { assets: any }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showAuth, setShowAuth] = useState(false);
+  const [showAuthOptions, setShowAuthOptions] = useState(false); // ← UPDATED 2026: New state for auth options overlay
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -2630,22 +2641,6 @@ const LoginPage = ({ assets }: { assets: any }) => {
         ))}
       </div>
 
-      {/* Top Navigation - Center Aligned */}
-      <div className="fixed top-0 left-0 right-0 z-[100] p-6 flex justify-center gap-4">
-        <button 
-          onClick={() => { setMode('login'); setShowAuth(true); }}
-          className="px-8 py-3 rounded-full bg-white border-2 border-teal-600/20 text-teal-900 font-bold hover:bg-teal-50 hover:scale-105 transition-all shadow-sm active:scale-95"
-        >
-          Login
-        </button>
-        <button 
-          onClick={() => { setMode('register'); setShowAuth(true); }}
-          className="px-8 py-3 rounded-full bg-teal-600 text-white font-bold hover:bg-teal-700 hover:scale-105 transition-all shadow-md active:scale-95"
-        >
-          Sign Up
-        </button>
-      </div>
-
       {/* Main Content */}
       <main className="flex-grow flex flex-col items-center justify-center pt-24 pb-12 px-6 relative">
         {/* Background Elements */}
@@ -2694,7 +2689,7 @@ const LoginPage = ({ assets }: { assets: any }) => {
               </div>
 
               <button 
-                onClick={() => { setMode('register'); setShowAuth(true); }}
+                onClick={() => setShowAuthOptions(true)} // ← UPDATED 2026: Show options overlay instead of direct register
                 className="group relative px-12 py-6 bg-[#FFCC70] text-teal-900 font-black text-xl rounded-3xl shadow-2xl shadow-orange-200 hover:bg-[#ffd68a] hover:-translate-y-1 transition-all flex items-center gap-4 active:scale-95"
               >
                 Start Your Adventure
@@ -2851,6 +2846,56 @@ const LoginPage = ({ assets }: { assets: any }) => {
                   {mode === 'login' ? "Register here" : "Login here"}
                 </button>
               </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Auth Options Overlay ← UPDATED 2026 */}
+        <AnimatePresence>
+          {showAuthOptions && !showAuth && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] bg-white/80 backdrop-blur-md flex items-center justify-center p-6"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 max-w-sm w-full text-center space-y-8"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-3xl font-serif italic text-teal-900">Choose Your Path</h3>
+                  <p className="text-stone-500 font-medium">Ready to start your grammar journey?</p>
+                </div>
+                
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => { setMode('login'); setShowAuth(true); setShowAuthOptions(false); }}
+                    className="w-full py-5 rounded-2xl bg-white border-2 border-teal-600/20 text-teal-900 font-bold hover:bg-teal-50 hover:scale-[1.02] transition-all shadow-sm flex items-center justify-center gap-3 group"
+                  >
+                    <Sparkles size={20} className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    Login
+                    <Sparkles size={20} className="text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                  <button 
+                    onClick={() => { setMode('register'); setShowAuth(true); setShowAuthOptions(false); }}
+                    className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 hover:scale-[1.02] transition-all shadow-lg flex items-center justify-center gap-3 group"
+                  >
+                    <Sparkles size={20} className="text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    Sign Up
+                    <Sparkles size={20} className="text-white/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setShowAuthOptions(false)}
+                  className="text-stone-400 font-bold hover:text-stone-600 transition-colors text-sm"
+                >
+                  Maybe later
+                </button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -3302,6 +3347,8 @@ const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
 
 // --- Main App ---
 
+const MODULE_ORDER = ['nouns', 'verbs', 'articles', 'prepositions', 'pronouns', 'adjectives']; // ← UPDATED 2026: Defined module sequence
+
 export default function App() {
   const user = useStore((state) => state.user);
   const logout = useStore((state) => state.logout);
@@ -3310,6 +3357,7 @@ export default function App() {
   const [view, setView] = useState<'lesson' | 'choose_action' | 'video' | 'quiz' | 'simpler_quiz' | 'practice'>('lesson');
   const [navigationHistory, setNavigationHistory] = useState<{ view: string, lesson: string }[]>([]);
   const { assets, loading, error, generate } = useAssets();
+  const [isCourseComplete, setIsCourseComplete] = useState(false); // ← UPDATED 2026: New state for course completion
 
   const setScore = useStore((state) => state.setScore);
 
@@ -3407,8 +3455,19 @@ export default function App() {
   };
 
   const handleNextModule = () => {
-    setLesson('');
-    setView('lesson');
+    const currentIndex = MODULE_ORDER.indexOf(currentLesson || '');
+    if (currentIndex !== -1 && currentIndex < MODULE_ORDER.length - 1) {
+      const nextLesson = MODULE_ORDER[currentIndex + 1];
+      setLesson(nextLesson);
+      setView('lesson');
+    } else if (currentIndex === MODULE_ORDER.length - 1) {
+      setIsCourseComplete(true);
+      setLesson('');
+      setView('lesson');
+    } else {
+      setLesson('');
+      setView('lesson');
+    }
   };
 
   return (
@@ -3428,6 +3487,30 @@ export default function App() {
         {!user?.isLoggedIn ? (
           <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <LoginPage assets={assets} />
+          </motion.div>
+        ) : isCourseComplete ? ( // ← UPDATED 2026: Show course complete screen
+          <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-8 w-full pt-28 text-center">
+            <div className="max-w-md bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 space-y-8">
+              <div className="w-32 h-32 bg-teal-50 rounded-[40px] flex items-center justify-center mx-auto shadow-xl shadow-teal-100/50 border-2 border-white relative">
+                <Trophy size={64} className="text-teal-600" />
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-2 -right-2 w-8 h-8 bg-orange-400 rounded-full border-4 border-white shadow-sm"
+                />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-4xl font-serif italic text-teal-900">All Done! Great Job!</h2>
+                <p className="text-stone-500 font-medium">You've mastered all the modules in GrammarPal. You're a true Grammar Master now!</p>
+              </div>
+              <button 
+                onClick={() => setIsCourseComplete(false)}
+                className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-3 group btn-plushy"
+              >
+                Back to Dashboard
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
           </motion.div>
         ) : !currentLesson ? (
           <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
