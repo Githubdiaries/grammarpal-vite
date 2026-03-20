@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Link, Routes, Route } from 'react-router-dom'; // ← UPDATED 2026
 import { motion, AnimatePresence } from 'motion/react';
+import Dashboard from './pages/Dashboard'; // ← ADDED DASHBOARD 2026
 import { 
   BookOpen, 
   Trophy, 
@@ -2909,7 +2911,7 @@ const LoginPage = ({ assets }: { assets: any }) => {
   );
 };
 
-const Navbar = ({ user, onLogout, onBack, showBack, onHelp }: { user: any, onLogout: () => void, onBack?: () => void, showBack?: boolean, onHelp?: () => void }) => {
+const Navbar = ({ user, onLogout, onBack, showBack, onHelp, onLogoClick }: { user: any, onLogout: () => void, onBack?: () => void, showBack?: boolean, onHelp?: () => void, onLogoClick?: () => void }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-md border-b border-stone-100">
       <div className="px-8 py-4 flex justify-between items-center max-w-7xl mx-auto w-full">
@@ -2927,12 +2929,17 @@ const Navbar = ({ user, onLogout, onBack, showBack, onHelp }: { user: any, onLog
             </motion.button>
           )}
           
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-ink rounded-xl flex items-center justify-center shadow-lg shadow-stone-200">
+          <Link 
+            to="/dashboard" // ← UPDATED 2026
+            onClick={onLogoClick}
+            aria-label="Go to dashboard" // ← UPDATED 2026
+            className="flex items-center gap-3 cursor-pointer group transition-all duration-200 active:scale-95"
+          >
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-ink rounded-xl flex items-center justify-center shadow-lg shadow-stone-200 group-hover:scale-105 transition-transform duration-200">
               <GraduationCap size={18} className="text-white" />
             </div>
-            <span className="font-serif text-xl sm:text-2xl italic tracking-tight text-teal-900">GrammarPal</span>
-          </div>
+            <span className="font-serif text-xl sm:text-2xl italic tracking-tight text-teal-900 group-hover:opacity-90 transition-opacity duration-200">GrammarPal</span>
+          </Link>
 
           {showBack && onBack && (
             <button 
@@ -3278,6 +3285,48 @@ const HomeScreen = ({ assets, loading, error, onRetry, onSelectLesson }: { asset
 };
 
 const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const user = useStore((state) => state.user);
+  const [messages, setMessages] = useState<any[]>([
+    {
+      sender: 'admin',
+      message: 'Hello! I am your GrammarPal teacher. How can I help you today?',
+      created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    }
+  ]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isOpen]);
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const messageData = {
+      student_id: user?.username || 'student',
+      message: newMessage,
+      sender: 'student',
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, messageData]);
+    setNewMessage('');
+
+    // Simulate an admin reply after 1 second for demo purposes
+    setTimeout(() => {
+      setMessages((prev) => [...prev, {
+        sender: 'admin',
+        message: "That's a great question! Let me check that for you.",
+        created_at: new Date().toISOString(),
+      }]);
+    }, 1500);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -3292,51 +3341,102 @@ const HelpModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-lg bg-[#FFF6E5] rounded-[32px] shadow-2xl overflow-hidden border-8 border-[#C89B6D]/20"
+            className="relative w-full max-w-lg bg-[#FFF6E5] rounded-[32px] shadow-2xl overflow-hidden border-8 border-[#C89B6D]/20 flex flex-col h-[80vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Wood Texture Border Effect */}
             <div className="absolute inset-0 border-[12px] border-[#C89B6D]/10 pointer-events-none rounded-[24px]" />
             
             {/* Header */}
-            <div className="p-8 flex justify-between items-center bg-white/50 border-b border-[#C89B6D]/10 relative">
+            <div className="p-6 flex justify-between items-center bg-white/50 border-b border-[#C89B6D]/10 relative shrink-0">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-pikachu/20 rounded-full flex items-center justify-center">
                   <Leaf size={24} className="text-[#A7D8F0]" />
                 </div>
-                <h2 className="text-2xl font-serif italic text-[#202124]">Need Help?</h2>
+                <h2 className="text-2xl font-serif italic text-[#202124]">Teacher Chat</h2>
               </div>
               <button 
                 onClick={onClose}
-                className="absolute -top-4 -right-4 w-12 h-12 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 hover:scale-110 transition-all flex items-center justify-center z-50 border-4 border-white"
+                className="w-10 h-10 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 hover:scale-110 transition-all flex items-center justify-center z-50 border-4 border-white"
                 aria-label="Close"
               >
-                <X size={24} strokeWidth={3} />
+                <X size={20} strokeWidth={3} />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#C89B6D] uppercase tracking-widest">Your Message</label>
-                <textarea 
-                  placeholder="Type your doubt here..."
-                  className="w-full h-40 p-6 bg-white rounded-2xl border-2 border-[#C89B6D]/10 focus:border-pikachu/50 outline-none transition-all resize-none font-medium text-ink placeholder:text-muted/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-[#C89B6D] uppercase tracking-widest">Optional Attachment</label>
-                <div className="w-full p-8 border-2 border-dashed border-[#C89B6D]/20 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white/50 transition-all cursor-pointer group">
-                  <Leaf size={32} className="text-[#A7D8F0] group-hover:scale-110 transition-transform" />
-                  <span className="text-sm font-medium text-muted">Attach screenshot</span>
+            {/* Message List */}
+            <div 
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth bg-white/30"
+            >
+              {loading ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-4">
+                  <Loader2 className="w-8 h-8 text-[#C89B6D] animate-spin" />
+                  <p className="text-[#C89B6D] font-medium italic">Loading messages...</p>
                 </div>
-              </div>
+              ) : messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-60">
+                  <div className="w-16 h-16 bg-[#C89B6D]/10 rounded-full flex items-center justify-center">
+                    <Mail size={32} className="text-[#C89B6D]" />
+                  </div>
+                  <p className="text-[#C89B6D] font-medium italic text-center">
+                    No replies yet — ask away!<br/>
+                    <span className="text-xs">Your teacher will reply here soon.</span>
+                  </p>
+                </div>
+              ) : (
+                messages.map((msg, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex ${msg.sender === 'student' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[80%] space-y-1`}>
+                      <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm font-medium ${
+                        msg.sender === 'student' 
+                          ? 'bg-blue-100 text-blue-900 rounded-tr-none' 
+                          : 'bg-green-100 text-green-900 rounded-tl-none'
+                      }`}>
+                        {msg.message}
+                      </div>
+                      <div className={`text-[10px] font-bold uppercase tracking-wider opacity-40 px-1 ${
+                        msg.sender === 'student' ? 'text-right' : 'text-left'
+                      }`}>
+                        {msg.sender === 'student' ? 'You' : 'Admin'} • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
 
-              <button className="w-full py-5 bg-[#FFCC70] text-[#202124] font-bold rounded-2xl shadow-lg shadow-orange-200/50 hover:bg-[#ffbd4a] hover:-translate-y-1 transition-all flex items-center justify-center gap-3 active:scale-95">
-                <Send size={20} />
-                Send to Teacher
-              </button>
+            {/* Input Area */}
+            <div className="p-6 bg-white/50 border-t border-[#C89B6D]/10 space-y-4 shrink-0">
+              <div className="relative">
+                <textarea 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Type your doubt here..."
+                  className="w-full h-24 p-4 bg-white rounded-2xl border-2 border-[#C89B6D]/10 focus:border-pikachu/50 outline-none transition-all resize-none font-medium text-ink placeholder:text-muted/50 text-sm"
+                />
+                <button 
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  className="absolute bottom-3 right-3 p-3 bg-[#FFCC70] text-[#202124] rounded-xl shadow-md hover:bg-[#ffbd4a] transition-all disabled:opacity-50 disabled:hover:bg-[#FFCC70]"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+              <p className="text-[10px] text-center text-[#C89B6D] font-bold uppercase tracking-widest">
+                Press Enter to send to Teacher
+              </p>
             </div>
           </motion.div>
         </motion.div>
@@ -3471,125 +3571,135 @@ export default function App() {
   };
 
   return (
-    <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain relative">
-      <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+    <Router>
+      <div className="antialiased selection:bg-primary/10 min-h-screen bg-surface subtle-grain relative">
+        <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
 
-      {user?.isLoggedIn && (
-        <Navbar 
-          user={user} 
-          onLogout={logout} 
-          onBack={handleGlobalBack} // ← UPDATED 2026: Use handleGlobalBack for consistent arrow behavior
-          showBack={!!currentLesson || isHelpModalOpen} // ← UPDATED 2026: Show when lesson or help is active
-          onHelp={() => setIsHelpModalOpen(true)} // ← UPDATED 2026: Pass help handler
-        />
-      )}
-      <AnimatePresence mode="wait">
-        {!user?.isLoggedIn ? (
-          <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoginPage assets={assets} />
-          </motion.div>
-        ) : isCourseComplete ? ( // ← UPDATED 2026: Show course complete screen
-          <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-8 w-full pt-28 text-center">
-            <div className="max-w-md bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 space-y-8">
-              <div className="w-32 h-32 bg-teal-50 rounded-[40px] flex items-center justify-center mx-auto shadow-xl shadow-teal-100/50 border-2 border-white relative">
-                <Trophy size={64} className="text-teal-600" />
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute -top-2 -right-2 w-8 h-8 bg-orange-400 rounded-full border-4 border-white shadow-sm"
-                />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-4xl font-serif italic text-teal-900">All Done! Great Job!</h2>
-                <p className="text-stone-500 font-medium">You've mastered all the modules in GrammarPal. You're a true Grammar Master now!</p>
-              </div>
-              <button 
-                onClick={() => setIsCourseComplete(false)}
-                className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-3 group btn-plushy"
-              >
-                Back to Dashboard
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </motion.div>
-        ) : !currentLesson ? (
-          <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
-            <HomeScreen 
-              assets={assets} 
-              loading={loading} 
-              error={error} 
-              onRetry={generate} 
-              onSelectLesson={(id) => {
-                setLesson(id);
-                setView('lesson');
-              }}
-            />
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="content" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center p-8 w-full pt-28" // ← UPDATED 2026: pt-28 for fixed Navbar
-          >
-            {view === 'lesson' && (
-              <LessonContentPage 
-                lessonId={currentLesson} 
-                onContinue={() => {
-                  if (currentLesson === 'prepositions') {
-                    setView('practice');
-                  } else {
-                    setView('choose_action');
-                  }
-                }} 
-                onBack={handleLessonBack}
-              />
-            )}
-            {view === 'choose_action' && (
-              <ChooseActionPage 
-                lessonId={currentLesson}
-                onWatchVideo={() => setView('video')}
-                onStartQuiz={() => setView('quiz')}
-                onStartPractice={() => setView('practice')}
-                onBack={handleChooseActionBack}
-              />
-            )}
-            {view === 'practice' && (
-              <InteractivePractice 
-                lessonId={currentLesson}
-                onComplete={() => setView('quiz')}
-                onWatchVideo={() => setView('video')}
-                onHelp={() => setIsHelpModalOpen(true)}
-                assets={assets}
-              />
-            )}
-            {view === 'video' && (
-              <VideoPage 
-                lessonId={currentLesson}
-                onDone={() => setView('choose_action')}
-              />
-            )}
-            {view === 'quiz' && (
-              <QuizPage 
-                lessonId={currentLesson} 
-                onComplete={handleQuizComplete} 
-                onNextModule={handleNextModule}
-                onBack={handleGlobalBack}
-              />
-            )}
-            {view === 'simpler_quiz' && (
-              <QuizPage 
-                lessonId={currentLesson} 
-                isSimpler={true}
-                onComplete={handleSimplerQuizComplete} 
-                onNextModule={handleNextModule}
-                onBack={handleGlobalBack}
-              />
-            )}
-          </motion.div>
+        {user?.isLoggedIn && (
+          <Navbar 
+            user={user} 
+            onLogout={logout} 
+            onBack={handleGlobalBack} // ← UPDATED 2026: Use handleGlobalBack for consistent arrow behavior
+            showBack={!!currentLesson || isHelpModalOpen} // ← UPDATED 2026: Show when lesson or help is active
+            onHelp={() => setIsHelpModalOpen(true)} // ← UPDATED 2026: Pass help handler
+            onLogoClick={handleBackToDashboard}
+          />
         )}
+      <AnimatePresence mode="wait">
+        <Routes> {/* ← ADDED DASHBOARD 2026 */}
+          <Route path="/dashboard" element={<Dashboard />} /> {/* ← ADDED DASHBOARD 2026 */}
+          <Route path="*" element={
+            <>
+              {!user?.isLoggedIn ? (
+                <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <LoginPage assets={assets} />
+                </motion.div>
+              ) : isCourseComplete ? ( // ← UPDATED 2026: Show course complete screen
+                <motion.div key="complete" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center p-8 w-full pt-28 text-center">
+                  <div className="max-w-md bg-white p-12 rounded-[48px] shadow-2xl border-2 border-teal-50 space-y-8">
+                    <div className="w-32 h-32 bg-teal-50 rounded-[40px] flex items-center justify-center mx-auto shadow-xl shadow-teal-100/50 border-2 border-white relative">
+                      <Trophy size={64} className="text-teal-600" />
+                      <motion.div 
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute -top-2 -right-2 w-8 h-8 bg-orange-400 rounded-full border-4 border-white shadow-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-4xl font-serif italic text-teal-900">All Done! Great Job!</h2>
+                      <p className="text-stone-500 font-medium">You've mastered all the modules in GrammarPal. You're a true Grammar Master now!</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsCourseComplete(false)}
+                      className="w-full py-5 rounded-2xl bg-teal-600 text-white font-bold hover:bg-teal-700 transition-all shadow-lg flex items-center justify-center gap-3 group btn-plushy"
+                    >
+                      Back to Dashboard
+                      <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                </motion.div>
+              ) : !currentLesson ? (
+                <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
+                  <HomeScreen 
+                    assets={assets} 
+                    loading={loading} 
+                    error={error} 
+                    onRetry={generate} 
+                    onSelectLesson={(id) => {
+                      setLesson(id);
+                      setView('lesson');
+                    }}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="content" 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center p-8 w-full pt-28" // ← UPDATED 2026: pt-28 for fixed Navbar
+                >
+                  {view === 'lesson' && (
+                    <LessonContentPage 
+                      lessonId={currentLesson} 
+                      onContinue={() => {
+                        if (currentLesson === 'prepositions') {
+                          setView('practice');
+                        } else {
+                          setView('choose_action');
+                        }
+                      }} 
+                      onBack={handleLessonBack}
+                    />
+                  )}
+                  {view === 'choose_action' && (
+                    <ChooseActionPage 
+                      lessonId={currentLesson}
+                      onWatchVideo={() => setView('video')}
+                      onStartQuiz={() => setView('quiz')}
+                      onStartPractice={() => setView('practice')}
+                      onBack={handleChooseActionBack}
+                    />
+                  )}
+                  {view === 'practice' && (
+                    <InteractivePractice 
+                      lessonId={currentLesson}
+                      onComplete={() => setView('quiz')}
+                      onWatchVideo={() => setView('video')}
+                      onHelp={() => setIsHelpModalOpen(true)}
+                      assets={assets}
+                    />
+                  )}
+                  {view === 'video' && (
+                    <VideoPage 
+                      lessonId={currentLesson}
+                      onDone={() => setView('choose_action')}
+                    />
+                  )}
+                  {view === 'quiz' && (
+                    <QuizPage 
+                      lessonId={currentLesson} 
+                      onComplete={handleQuizComplete} 
+                      onNextModule={handleNextModule}
+                      onBack={handleGlobalBack}
+                    />
+                  )}
+                  {view === 'simpler_quiz' && (
+                    <QuizPage 
+                      lessonId={currentLesson} 
+                      isSimpler={true}
+                      onComplete={handleSimplerQuizComplete} 
+                      onNextModule={handleNextModule}
+                      onBack={handleGlobalBack}
+                    />
+                  )}
+                </motion.div>
+              )}
+            </>
+          } />
+        </Routes> {/* ← ADDED DASHBOARD 2026 */}
       </AnimatePresence>
     </div>
+    </Router>
   );
 }
